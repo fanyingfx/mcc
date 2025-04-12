@@ -1,0 +1,10 @@
+{
+  "import": [
+    "mcc/utils",
+    "mcc/parser",
+    "mcc/lexer"
+
+  ],
+  "test-import":[
+  ]
+}

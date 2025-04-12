@@ -1,0 +1,6 @@
+{
+  "import": [
+    "mcc/utils",
+    "mcc/lexer"
+  ]
+}

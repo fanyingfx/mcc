@@ -1,0 +1,11 @@
+{
+  "import": [
+    "mcc/utils",
+    "mcc/parser",
+    "mcc/lexer",
+    "mcc/asm"
+
+  ],
+  "test-import":[
+  ]
+}
