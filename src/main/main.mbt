@@ -63,7 +63,7 @@ fn main {
     println("End in \{setting.stage}")
     return
   }
-  let asm = @asm.gen_program(ast)
+  let asm = @backend.compile(tacky)
   if setting.stage is CodeGen {
     println("End in \{setting.stage}")
     return

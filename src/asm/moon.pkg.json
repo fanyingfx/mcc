@@ -1,9 +1,0 @@
-{
-  "import": [
-    "mcc/parser",
-    "mcc/lexer"
-
-  ],
-  "test-import":[
-  ]
-}

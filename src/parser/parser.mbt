@@ -116,5 +116,8 @@ test "redundate_parens" {
     #|}
   let tokens = @lexer.lex(content)
   let ast = parse(tokens)
+  inspect!(ast, content=
+    #|{function_def: {name: "main", body: Return(Unary(Negate, Constant(10)))}}
+  )
 
 }

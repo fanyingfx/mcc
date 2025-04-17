@@ -5,11 +5,16 @@ pub fn die[T](msg : String, loc~ : SourceLoc = _) -> T {
 }
 
 ///|
+pub fn log[T : Show](msg : T, loc~ : SourceLoc = _) -> Unit {
+  println("\{loc} \{msg}")
+}
+
+///|
 let counter : Ref[Int] = { val: 0 }
 
 ///| reset counter for testing
 /// only can use in test
-pub fn reset_counter()->Unit {
+pub fn reset_counter() -> Unit {
   counter.val = 0
 }
 

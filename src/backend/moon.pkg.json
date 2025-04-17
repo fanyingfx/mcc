@@ -1,12 +1,12 @@
 {
   "import": [
 
-    "mcc/backend",
+    "mcc/tacky",
     "mcc/utils"
   ],
-  "test-import": [
+  "test-import":[
     "mcc/parser",
     "mcc/lexer",
-    "mcc/tacky"
+    "mcc/backend"
   ]
 }

@@ -3,7 +3,7 @@
   "import": [
     "mcc/parser",
     "mcc/lexer",
-    "mcc/asm",
+    "mcc/backend",
     "mcc/emit",
     "moonbitlang/x/fs",
     "moonbitlang/x/sys",
