@@ -7,6 +7,7 @@
     "mcc/emit",
     "moonbitlang/x/fs",
     "moonbitlang/x/sys",
-    "mcc/utils"
+    "mcc/utils",
+    "mcc/tacky"
   ]
 }

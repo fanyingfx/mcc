@@ -26,9 +26,15 @@ fn peek_char(self : Lexer) -> Char? {
 fn eat_while(self : Lexer, predicate : (Char?) -> Bool) -> String {
   let start = self.pos
   while predicate(self.peek_char()) {
+    if self.peek_char() is None {
+      break
+    }
     self.advance_char()
   }
-  self.content.substring(start~, end=self.pos + 1)
+  self.content.substring(
+    start~,
+    end=if self.peek_char() is None { self.pos } else { self.pos + 1 },
+  )
 }
 
 ///|
@@ -131,7 +137,7 @@ fn next_token(self : Lexer) -> Token {
         ';' => Semicolon
         '~' => Tilde
         '+' => Plus
-        '-' => Hyphen
+        '-' => if self.match_next_char('-') { DoubleHyphen } else { Hyphen }
         '*' => Star
         '/' =>
           if self.match_next_char('/') {
@@ -197,6 +203,27 @@ test "simple main" {
     content=
       #|@queue.of([KWInt, Identifier("main"), LParen, KWVoid, RParen, LBrace, KWReturn, Constant(100), Semicolon, RBrace, EOF])
     ,
+  )
+}
+
+///|
+test "comment" {
+  inspect!(lex("// 1234"), content="@queue.of([EOF])")
+  let multiple_comment =
+    #|1;/*dsdfdsfds
+    #|fsdfsdfds
+    #|sdfsdfsdf
+  inspect!(
+    lex(multiple_comment),
+    content="@queue.of([Constant(1), Semicolon, EOF])",
+  )
+  let multiple_comment =
+    #|1;/*dsdfdsfds
+    #|fsdfsdfds
+    #|sdfsdfsdf*/
+  inspect!(
+    lex(multiple_comment),
+    content="@queue.of([Constant(1), Semicolon, EOF])",
   )
 }
 

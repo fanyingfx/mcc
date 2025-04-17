@@ -1,27 +1,28 @@
 ///|
-pub(all) struct Program {
+struct Program {
   function_def : FunctionDef
 } derive(Show)
 
 ///|
-pub(all) struct FunctionDef {
+struct FunctionDef {
   name : String
-  body : Stmt
+  body : Array[Instruction]
 } derive(Show)
 
 ///|
-pub(all) enum Stmt {
-  Return(Expr)
+enum Instruction {
+  Return(Val)
+  Unary(UnaryOp, dst~ : Val, src~ : Val)
 } derive(Show)
 
 ///|
-pub(all) enum Expr {
+enum Val {
   Constant(Int)
-  Unary(UnaryOp, Expr)
+  Var(String)
 } derive(Show)
 
 ///|
-pub(all) enum UnaryOp {
+enum UnaryOp {
   Complement
   Negate
 } derive(Show)

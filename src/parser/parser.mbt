@@ -4,42 +4,69 @@ typealias @lexer.Token
 ///|
 priv type TokenStream @queue.T[Token] derive(Show)
 
-pub fn parse(tokens:@queue.T[Token])->Program{
-  let token_stream:TokenStream = tokens
+///|
+pub fn parse(tokens : @queue.T[Token]) -> Program {
+  let token_stream : TokenStream = tokens
   let func = token_stream.parse_func_def()
   token_stream.expect(EOF)
-  {function_def: func,}
+  { function_def: func }
 }
-fn parse_func_def(self:TokenStream)->FunctionDef{
+
+///|
+fn parse_func_def(self : TokenStream) -> FunctionDef {
   self.expect(KWInt)
-  let name = match self.take(){
-    Identifier(name)=>name
+  let name = match self.take() {
+    Identifier(name) => name
     _ => @utils.die("Not a vaild funciton")
   }
   self.expect(LParen)
   self.expect(KWVoid)
   self.expect(RParen)
   self.expect(LBrace)
-
   let stmt = self.parse_statement()
   self.expect(RBrace)
-  {name,body:stmt}
+  { name, body: stmt }
 }
+
 ///|
 fn parse_statement(self : TokenStream) -> Stmt {
   self.expect(KWReturn)
-
   let return_val = self.parse_expr()
   self.expect(Semicolon)
   Return(return_val)
 }
 
-fn parse_expr(self:TokenStream)->Expr{
-  match self.take(){
-    Constant(i) => Constant(i)
-    _ =>@utils.die("not a valid int")
+///|
+fn parse_expr(self : TokenStream) -> Expr {
+  match self.peek() {
+    Constant(i) => {
+      let _ = self.take()
+      Constant(i)
+    }
+    Hyphen | Tilde => {
+      let op = self.parse_unop()
+      let inner_expr = self.parse_expr()
+      Unary(op, inner_expr)
+    }
+    LParen => {
+      let _ = self.take()
+      let inner_expr = self.parse_expr()
+      self.expect(RParen)
+      inner_expr
+    }
+    tok => @utils.die("\{tok}, Malformed expression")
   }
 }
+
+///|
+fn parse_unop(self : TokenStream) -> UnaryOp {
+  match self.take() {
+    Hyphen => Negate
+    Tilde => Complement
+    tok => @utils.die("\{tok} is not a valid unary operator")
+  }
+}
+
 ///|
 fn peek(self : TokenStream) -> Token {
   match self._.peek() {
@@ -48,9 +75,10 @@ fn peek(self : TokenStream) -> Token {
   }
 }
 
-fn take(self:TokenStream)->Token{
-  match self._.pop(){
-    Some(tok)=>tok
+///|
+fn take(self : TokenStream) -> Token {
+  match self._.pop() {
+    Some(tok) => tok
     None => @utils.die("End of Stream")
   }
 }
@@ -58,20 +86,35 @@ fn take(self:TokenStream)->Token{
 ///|
 fn expect(self : TokenStream, expected : Token) -> Unit {
   let actual = self.take()
-  if actual != expected{
+  if actual != expected {
     @utils.die("Expected:\{expected}, actual:\{actual}, Syntax error")
   }
 }
 
-test{
-  let content = 
-  #| int main(void){
-  #|    return 3;
-  #|}
+///|
+test {
+  let content =
+    #| int main(void){
+    #|    return 3;
+    #|}
   let tokens = @lexer.lex(content)
   let ast = parse(tokens)
-  inspect!(ast, content=
-    #|{function_def: {name: "main", body: Return(Constant(3))}}
-
+  inspect!(
+    ast,
+    content=
+      #|{function_def: {name: "main", body: Return(Constant(3))}}
+    ,
   )
+}
+
+///|
+test "redundate_parens" {
+  let content =
+    #|int main(void)
+    #|{
+    #|return -((((10))));
+    #|}
+  let tokens = @lexer.lex(content)
+  let ast = parse(tokens)
+
 }

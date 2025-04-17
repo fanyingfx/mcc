@@ -20,6 +20,7 @@ fn gen_stmt(stmt:@parser.Stmt)->Array[Instruction]{
 fn gen_expr(expr:@parser.Expr)->Operand{
   match expr{
     Constant(i) => Imm(i)
+    _ =>panic()
   }
 }
 

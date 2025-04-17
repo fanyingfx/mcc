@@ -28,9 +28,10 @@ fn Setting::get_setting() -> Setting {
   let basename = filename.trim_end("ci").trim_end(".")
   { filename, basename, stage }
 }
-fn asm_file(self:Setting)->String{
+
+///|
+fn asm_file(self : Setting) -> String {
   self.basename + ".asm"
-  
 }
 
 ///|
@@ -54,6 +55,11 @@ fn main {
   }
   let ast = @parser.parse(tokens)
   if setting.stage is Parse {
+    println("End in \{setting.stage}")
+    return
+  }
+  let tacky = @tacky.emit_tacky(ast)
+  if setting.stage is Tacky {
     println("End in \{setting.stage}")
     return
   }

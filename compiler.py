@@ -24,8 +24,10 @@ def main():
     if stage == "--compile":
         subprocess.run(["fasm",asm_file],check=True)
     # subprocess.run(["ld",str(objfile),"-dynamic-linker","/usr/lib/ld-linux-x86-64.so.2" ,"-lc" , "-o",basename],stdout=subprocess.DEVNULL,check=True)
-    os.remove(asm_file)
-    os.remove(preprocessed_src)
+    if Path(asm_file).exists():
+        os.remove(asm_file)
+    if Path(preprocessed_src).exists():
+        os.remove(preprocessed_src)
 
 
 if __name__ == "__main__":
