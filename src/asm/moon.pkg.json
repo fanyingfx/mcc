@@ -1,6 +1,5 @@
 {
   "import": [
-    "mcc/utils",
     "mcc/parser",
     "mcc/lexer"
 

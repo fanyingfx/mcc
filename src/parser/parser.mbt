@@ -59,7 +59,7 @@ fn take(self:TokenStream)->Token{
 fn expect(self : TokenStream, expected : Token) -> Unit {
   let actual = self.take()
   if actual != expected{
-    @utils.die("Syntax error")
+    @utils.die("Expected:\{expected}, actual:\{actual}, Syntax error")
   }
 }
 
@@ -71,6 +71,7 @@ test{
   let tokens = @lexer.lex(content)
   let ast = parse(tokens)
   inspect!(ast, content=
-    #|{func: {name: "main", body: Return(Constant(3))}}
+    #|{function_def: {name: "main", body: Return(Constant(3))}}
+
   )
 }

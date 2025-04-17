@@ -61,7 +61,7 @@ test {
   let ast = @parser.parse(tokens)
   let asm = @asm.gen_program(ast)
   let asm_str = emit(asm)
-  println(asm_str)
+  // println(asm_str)
   inspect!(
     asm_str,
     content=

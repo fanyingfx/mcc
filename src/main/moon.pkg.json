@@ -1,11 +1,12 @@
 {
   "is-main": true,
   "import": [
-    "mcc/utils",
     "mcc/parser",
     "mcc/lexer",
     "mcc/asm",
     "mcc/emit",
-    "moonbitlang/x/fs"
+    "moonbitlang/x/fs",
+    "moonbitlang/x/sys",
+    "mcc/utils"
   ]
 }

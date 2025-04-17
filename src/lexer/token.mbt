@@ -43,6 +43,7 @@ pub(all) enum Token {
   Comma
   EOF
   Invalid
+  Comment(String)
 } derive(Show, Eq)
 
 ///|
