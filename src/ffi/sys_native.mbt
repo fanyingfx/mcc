@@ -37,14 +37,13 @@ fn mbt_string_to_utf8_bytes(str : String, is_filename : Bool) -> Bytes {
 }
 
 ///|
-#borrow(cmd)
 extern "C"  fn run_cmd_ffi(cmd : Bytes) -> Int = "run_cmd"
 
 ///|
 /// 
 pub fn run_cmd(cmd : String) -> Unit {
-  let status = run_cmd_ffi(mbt_string_to_utf8_bytes(cmd, true))
-  if status != 0 {
-    panic()
-  }
+  let _status = run_cmd_ffi(mbt_string_to_utf8_bytes(cmd, true))
+  // if status != 0 {
+  //   panic()
+  // }
 }

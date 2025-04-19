@@ -10,5 +10,11 @@
     "mcc/utils",
     "mcc/tacky",
     "mcc/ffi"
-  ]
+  ],
+  "link":{
+    "native":{
+      "cc": "gcc",
+      "cc-flags": "-s -O3"
+    }
+  }
 }
