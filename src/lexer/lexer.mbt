@@ -31,10 +31,7 @@ fn eat_while(self : Lexer, predicate : (Char?) -> Bool) -> String {
     }
     self.advance_char()
   }
-  self.content.substring(
-    start~,
-    end=if self.peek_char() is None { self.pos } else { self.pos + 1 },
-  )
+  self.content.substring(start~, end=self.pos + 1)
 }
 
 ///|
@@ -170,7 +167,7 @@ pub fn lex(content : String) -> @queue.T[Token] {
   while true {
     match lexer.next_token() {
       EOF => break
-      Comment(_) => continue
+      // Comment(_) => continue
       tok => tokens.push(tok)
     }
   }
@@ -208,14 +205,22 @@ test "simple main" {
 
 ///|
 test "comment" {
-  inspect!(lex("// 1234"), content="@queue.of([EOF])")
+  inspect!(
+    lex("// 1234"),
+    content=
+      #|@queue.of([Comment("/ 1234"), EOF])
+
+    ,
+  )
   let multiple_comment =
     #|1;/*dsdfdsfds
     #|fsdfsdfds
     #|sdfsdfsdf
   inspect!(
     lex(multiple_comment),
-    content="@queue.of([Constant(1), Semicolon, EOF])",
+    content=
+      #|@queue.of([Constant(1), Semicolon, Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf"), EOF])
+    ,
   )
   let multiple_comment =
     #|1;/*dsdfdsfds
@@ -223,7 +228,9 @@ test "comment" {
     #|sdfsdfsdf*/
   inspect!(
     lex(multiple_comment),
-    content="@queue.of([Constant(1), Semicolon, EOF])",
+    content=
+      #|@queue.of([Constant(1), Semicolon, Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf*"), EOF])
+    ,
   )
 }
 

@@ -70,6 +70,10 @@ fn parse_unop(self : TokenStream) -> UnaryOp {
 ///|
 fn peek(self : TokenStream) -> Token {
   match self._.peek() {
+    Some(Comment(_)) => {
+      let _ = self.take()
+      self.peek()
+    }
     Some(tok) => tok
     None => @utils.die("End of Stream")
   }
@@ -116,8 +120,10 @@ test "redundate_parens" {
     #|}
   let tokens = @lexer.lex(content)
   let ast = parse(tokens)
-  inspect!(ast, content=
-    #|{function_def: {name: "main", body: Return(Unary(Negate, Constant(10)))}}
+  inspect!(
+    ast,
+    content=
+      #|{function_def: {name: "main", body: Return(Unary(Negate, Constant(10)))}}
+    ,
   )
-
 }
