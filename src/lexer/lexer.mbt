@@ -3,12 +3,21 @@ priv struct Lexer {
   len : Int
   content : String
   mut pos : Int
+  mut row : Int
+  mut col : Int
   mut ch : Char?
 }
 
 ///|
 fn Lexer::new(content : String) -> Lexer {
-  let lexer = { len: content.length(), content, pos: -1, ch: None }
+  let lexer = {
+    len: content.length(),
+    content,
+    pos: -1,
+    ch: None,
+    row: 1,
+    col: 1,
+  }
   lexer.advance_char()
   lexer
 }
@@ -36,7 +45,12 @@ fn eat_while(self : Lexer, predicate : (Char?) -> Bool) -> String {
 
 ///|
 fn advance_char(self : Lexer) -> Unit {
+  if self.ch is Some('\n') {
+    self.row += 1
+    self.col = 1
+  }
   self.ch = self.peek_char()
+  self.col += 1
   self.pos += 1
 }
 
@@ -48,7 +62,8 @@ fn skip_whitespace(self : Lexer) -> Unit {
 }
 
 ///|
-fn make_int(self : Lexer) -> Token {
+///|
+fn make_int(self : Lexer) -> TokenType {
   let int_str = self.eat_while(fn {
     Some('0'..='9') => true
     Some('a'..='z' | 'A'..='Z') => panic()
@@ -63,7 +78,7 @@ fn make_int(self : Lexer) -> Token {
 }
 
 ///|
-let keywords : Map[String, Token] = {
+let keywords : Map[String, TokenType] = {
   "int": KWInt,
   "void": KWVoid,
   "return": KWReturn,
@@ -79,7 +94,7 @@ let keywords : Map[String, Token] = {
 }
 
 ///|
-fn make_ident_or_keyword(self : Lexer) -> Token {
+fn make_ident_or_keyword(self : Lexer) -> TokenType {
   let idstr = self.eat_while(fn {
     Some('a'..='z' | 'A'..='Z' | '_' | '0'..='9') => true
     _ => false
@@ -102,7 +117,7 @@ fn match_next_char(self : Lexer, ch : Char) -> Bool {
 }
 
 ///|
-fn multiple_comment(self : Lexer) -> Token {
+fn multiple_comment(self : Lexer) -> TokenType {
   let start = self.pos
   while not(self.ch is Some('*') && self.peek_char() is Some('/')) {
     if self.peek_char() is None {
@@ -122,7 +137,8 @@ fn multiple_comment(self : Lexer) -> Token {
 ///|
 fn next_token(self : Lexer) -> Token {
   self.skip_whitespace()
-  let tok : Token = match self.ch {
+  let position : Position = { row: self.row, col: self.col }
+  let token_type : TokenType = match self.ch {
     Some(c) =>
       match c {
         '0'..='9' => self.make_int()
@@ -157,7 +173,7 @@ fn next_token(self : Lexer) -> Token {
     None => EOF
   }
   self.advance_char()
-  tok
+  { token_type, position }
 }
 
 ///|
@@ -166,12 +182,13 @@ pub fn lex(content : String) -> @queue.T[Token] {
   let tokens = @queue.new()
   while true {
     match lexer.next_token() {
-      EOF => break
-      // Comment(_) => continue
+      { token_type: EOF, .. } as eof => {
+        tokens.push(eof)
+        break
+      }
       tok => tokens.push(tok)
     }
   }
-  tokens.push(EOF)
   tokens
 }
 
@@ -184,7 +201,9 @@ test "simple main" {
   inspect!(
     lex(content),
     content=
-      #|@queue.of([KWInt, Identifier("main"), LParen, KWVoid, RParen, LBrace, KWReturn, Constant(2), Semicolon, RBrace, EOF])
+      #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(2), position: 2:13}, {token_type: Semicolon, position: 2:14}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:3}])
+
+
     ,
   )
 }
@@ -198,7 +217,9 @@ test "simple main" {
   inspect!(
     lex(content),
     content=
-      #|@queue.of([KWInt, Identifier("main"), LParen, KWVoid, RParen, LBrace, KWReturn, Constant(100), Semicolon, RBrace, EOF])
+      #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(100), position: 2:13}, {token_type: Semicolon, position: 2:16}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:3}])
+
+
     ,
   )
 }
@@ -208,7 +229,8 @@ test "comment" {
   inspect!(
     lex("// 1234"),
     content=
-      #|@queue.of([Comment("/ 1234"), EOF])
+      #|@queue.of([{token_type: Comment("/ 1234"), position: 1:2}, {token_type: EOF, position: 1:9}])
+
 
     ,
   )
@@ -219,7 +241,9 @@ test "comment" {
   inspect!(
     lex(multiple_comment),
     content=
-      #|@queue.of([Constant(1), Semicolon, Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf"), EOF])
+      #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf"), position: 1:4}, {token_type: EOF, position: 3:12}])
+
+
     ,
   )
   let multiple_comment =
@@ -229,7 +253,9 @@ test "comment" {
   inspect!(
     lex(multiple_comment),
     content=
-      #|@queue.of([Constant(1), Semicolon, Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf*"), EOF])
+      #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf*"), position: 1:4}, {token_type: EOF, position: 3:13}])
+
+
     ,
   )
 }

@@ -1,5 +1,5 @@
 ///|
-typealias @lexer.Token
+typealias @lexer.(TokenType, Token)
 
 ///|
 priv type TokenStream @queue.T[Token] derive(Show)
@@ -16,8 +16,8 @@ pub fn parse(tokens : @queue.T[Token]) -> Program {
 fn parse_func_def(self : TokenStream) -> FunctionDef {
   self.expect(KWInt)
   let name = match self.take() {
-    Identifier(name) => name
-    _ => @utils.die("Not a vaild funciton")
+    {token_type:Identifier(name),..} => name
+    tok => @utils.die("\{tok} is Not a vaild funciton")
   }
   self.expect(LParen)
   self.expect(KWVoid)
@@ -38,7 +38,7 @@ fn parse_statement(self : TokenStream) -> Stmt {
 
 ///|
 fn parse_expr(self : TokenStream) -> Expr {
-  match self.peek() {
+  match self.peek().token_type {
     Constant(i) => {
       let _ = self.take()
       Constant(i)
@@ -60,7 +60,7 @@ fn parse_expr(self : TokenStream) -> Expr {
 
 ///|
 fn parse_unop(self : TokenStream) -> UnaryOp {
-  match self.take() {
+  match self.take().token_type {
     Hyphen => Negate
     Tilde => Complement
     tok => @utils.die("\{tok} is not a valid unary operator")
@@ -70,7 +70,7 @@ fn parse_unop(self : TokenStream) -> UnaryOp {
 ///|
 fn peek(self : TokenStream) -> Token {
   match self._.peek() {
-    Some(Comment(_)) => {
+    Some({ token_type: Comment(_), .. }) => {
       let _ = self.take()
       self.peek()
     }
@@ -88,8 +88,8 @@ fn take(self : TokenStream) -> Token {
 }
 
 ///|
-fn expect(self : TokenStream, expected : Token) -> Unit {
-  let actual = self.take()
+fn expect(self : TokenStream, expected : TokenType) -> Unit {
+  let actual = self.take().token_type
   if actual != expected {
     @utils.die("Expected:\{expected}, actual:\{actual}, Syntax error")
   }
