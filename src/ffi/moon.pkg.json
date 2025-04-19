@@ -1,0 +1,5 @@
+{
+    "import": [
+    ],
+    "native-stub": [ "native_stub.c" ]
+  }
