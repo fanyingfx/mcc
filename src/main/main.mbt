@@ -8,14 +8,22 @@ struct Setting {
 ///|
 fn Setting::get_setting() -> Setting {
   let args = @sys.get_cli_args()
-  if not(args.length() is (3 | 4)) {
+  println(args)
+  if not(args.length() is (2 | 3)) {
     @utils.die("Wrong number args")
   }
-  let filename = args[2]
+  let (filename, stage) = if args[1].has_suffix("c") {
+    (args[1], if args.length() == 3 { args[2] } else { "--compile" })
+  } else {
+    (args[2], args[1])
+  }
   if not(filename.has_suffix(".i") || filename.has_suffix(".c")) {
     @utils.die("\{filename} is not a c file")
   }
-  let stage = if args.length() == 4 { args[3] } else { "--compile" }
+  let basename = filename.trim_end("c").trim_end(".")
+  let preprocessed_src = basename + ".i"
+  @ffi.run_cmd("gcc -E -P \{filename} -o \{preprocessed_src}")
+  // let stage = if args.length() == 4 { args[3] } else { "--compile" }
   let stage_str = stage.trim_start("-")
   let stage = match stage_str {
     "lex" => Lex
@@ -25,8 +33,7 @@ fn Setting::get_setting() -> Setting {
     "compile" => Compile
     _ => @utils.die("\{stage_str} is not a valid stage")
   }
-  let basename = filename.trim_end("ci").trim_end(".")
-  { filename, basename, stage }
+  { filename: preprocessed_src, basename, stage }
 }
 
 ///|
@@ -71,4 +78,6 @@ fn main {
   let asm_str = @emit.emit(asm)
   // println(setting.asm_file())
   @fs.write_string_to_file?(setting.asm_file(), asm_str).unwrap()
+  println(setting.asm_file())
+  @ffi.run_cmd("fasm \{setting.asm_file()}")
 }
