@@ -34,14 +34,38 @@ fn emit_expr(expr : @parser.Expr) -> (Array[Instruction], Val) {
       instructions.push(Unary(tacky_op, dst~, src~))
       (instructions, dst)
     }
+    Binary(op, e1, e2) => {
+      let instructions = []
+      let (instructions1, src1) = emit_expr(e1)
+      let (instructions2, src2) = emit_expr(e2)
+      let dst_name = @utils.make_temporary()
+      let dst = Var(dst_name)
+      let tacky_op = convert_binop(op)
+      instructions.append(instructions1)
+      instructions.append(instructions2)
+      instructions.push(Binary(tacky_op, dst~, src1~, src2~))
+      (instructions, dst)
+    }
   }
 }
+
 
 ///|
 fn convert_unop(op : @parser.UnaryOp) -> UnaryOp {
   match op {
     Complement => Complement
     Negate => Negate
+  }
+}
+
+///|
+fn convert_binop(op : @parser.BinaryOp) -> BinaryOp {
+  match op {
+    Div => Div
+    Mul => Mul
+    Sub => Sub
+    Add => Add
+    Rem => Rem
   }
 }
 

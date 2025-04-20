@@ -20,6 +20,25 @@ fn convert_instruction(instruction : @tacky.Instruction) -> Array[Instruction] {
       let src = convert_val(src)
       [Mov(dst~, src~), Unary(convert_unop(op), dst)]
     }
+    Binary(Div, dst~, src1~, src2~) => {
+      let src1 = convert_val(src1)
+      let src2 = convert_val(src2)
+      let dst = convert_val(dst)
+      [Mov(dst=Reg(AX), src=src1), Cdq, Idiv(src2), Mov(dst~, src=Reg(AX))]
+    }
+    Binary(Rem, dst~, src1~, src2~) => {
+      let src1 = convert_val(src1)
+      let src2 = convert_val(src2)
+      let dst = convert_val(dst)
+      [Mov(dst=Reg(AX), src=src1), Cdq, Idiv(src2), Mov(dst~, src=Reg(DX))]
+    }
+    Binary(op, dst~, src1~, src2~) => {
+      let src1 = convert_val(src1)
+      let src2 = convert_val(src2)
+      let dst = convert_val(dst)
+      let op = convert_binop(op)
+      [Mov(dst~, src=src1), Binary(op, dst, src2)]
+    }
   }
 }
 
@@ -36,5 +55,15 @@ fn convert_unop(op : @tacky.UnaryOp) -> UnaryOp {
   match op {
     Complement => Not
     Negate => Neg
+  }
+}
+
+///|
+fn convert_binop(op : @tacky.BinaryOp) -> BinaryOp {
+  match op {
+    Mul => Mul
+    Sub => Sub
+    Add => Add
+    op => @utils.die("\{op} cannot be converted!")
   }
 }

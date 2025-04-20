@@ -36,9 +36,18 @@ fn replace_in_instruction(
       let src = self.replace_operand(src)
       Mov(dst~, src~)
     }
-    Ret => Ret
+    Binary(op, e1, e2) => {
+      let e1 = self.replace_operand(e1)
+      let e2 = self.replace_operand(e2)
+      Binary(op, e1, e2)
+    }
+    Ret | Cdq as instruction => instruction
     AllocateStack(_) =>
       @utils.die("AllocateStack should not be in replace pseudo")
+    Idiv(operand) => {
+      let operand = self.replace_operand(operand)
+      Idiv(operand)
+    }
   }
 }
 

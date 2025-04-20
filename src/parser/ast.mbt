@@ -18,10 +18,20 @@ pub(all) enum Stmt {
 pub(all) enum Expr {
   Constant(Int)
   Unary(UnaryOp, Expr)
+  Binary(BinaryOp, Expr, Expr)
 } derive(Show)
 
 ///|
 pub(all) enum UnaryOp {
   Complement
   Negate
+} derive(Show)
+
+///|
+pub enum BinaryOp {
+  Add
+  Sub
+  Mul
+  Div
+  Rem
 } derive(Show)

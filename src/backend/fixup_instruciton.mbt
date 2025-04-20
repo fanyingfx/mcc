@@ -21,6 +21,15 @@ fn fixup_instruction(instruction : Instruction) -> Array[Instruction] {
   match instruction {
     Mov(dst=Stack(_) as dst, src=Stack(_) as src) =>
       [Mov(dst=Reg(R10), src~), Mov(dst~, src=Reg(R10))]
+    Binary(Add | Sub as op,Stack(_) as e1, Stack(_) as e2) =>
+  
+      [Mov(dst=Reg(R10), src=e2), Binary(op, e1, Reg(R10))]
+    Binary(Mul,Stack(_) as e1,e2)=>[
+      Mov(dst=Reg(R11),src=e1),
+      Binary(Mul,Reg(R11),e2),
+      Mov(dst=e1,src=Reg(R11))
+    ]
+    Idiv(Imm(_) as imm) => [Mov(dst=Reg(R10), src=imm), Idiv(Reg(R10))]
     other => [other]
   }
 }

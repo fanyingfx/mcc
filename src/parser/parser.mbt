@@ -5,6 +5,20 @@ typealias @lexer.(TokenType, Token)
 priv type TokenStream @queue.T[Token] derive(Show)
 
 ///|
+priv trait Precedence {
+  precedence(Self) -> Int
+}
+
+///|
+impl Precedence for TokenType with precedence(self) {
+  match self {
+    Plus | Hyphen => 45
+    Star | Slash | Percent => 50
+    tok => @utils.die("\{tok} is not supported yet")
+  }
+}
+
+///|
 pub fn parse(tokens : @queue.T[Token]) -> Program {
   let token_stream : TokenStream = tokens
   let func = token_stream.parse_func_def()
@@ -16,7 +30,7 @@ pub fn parse(tokens : @queue.T[Token]) -> Program {
 fn parse_func_def(self : TokenStream) -> FunctionDef {
   self.expect(KWInt)
   let name = match self.take() {
-    {token_type:Identifier(name),..} => name
+    { token_type: Identifier(name), .. } => name
     tok => @utils.die("\{tok} is Not a vaild funciton")
   }
   self.expect(LParen)
@@ -31,13 +45,31 @@ fn parse_func_def(self : TokenStream) -> FunctionDef {
 ///|
 fn parse_statement(self : TokenStream) -> Stmt {
   self.expect(KWReturn)
-  let return_val = self.parse_expr()
+  let return_val = self.parse_expr(0)
   self.expect(Semicolon)
   Return(return_val)
 }
 
 ///|
-fn parse_expr(self : TokenStream) -> Expr {
+fn parse_expr(self : TokenStream, min_prec : Int) -> Expr {
+  let mut left = self.parse_factor()
+  let mut next_token = self.peek().token_type
+  while is_binary_op(next_token) && next_token.precedence() >= min_prec {
+    let op = self.parse_binop()
+    let right = self.parse_expr(next_token.precedence() + 1)
+    left = Binary(op, left, right)
+    next_token = self.peek().token_type
+  }
+  left
+}
+
+///|
+fn is_binary_op(token_type : TokenType) -> Bool {
+  token_type is (Plus | Hyphen | Star | Slash | Percent)
+}
+
+///|
+fn parse_factor(self : TokenStream) -> Expr {
   match self.peek().token_type {
     Constant(i) => {
       let _ = self.take()
@@ -45,12 +77,12 @@ fn parse_expr(self : TokenStream) -> Expr {
     }
     Hyphen | Tilde => {
       let op = self.parse_unop()
-      let inner_expr = self.parse_expr()
+      let inner_expr = self.parse_factor()
       Unary(op, inner_expr)
     }
     LParen => {
       let _ = self.take()
-      let inner_expr = self.parse_expr()
+      let inner_expr = self.parse_expr(0)
       self.expect(RParen)
       inner_expr
     }
@@ -64,6 +96,18 @@ fn parse_unop(self : TokenStream) -> UnaryOp {
     Hyphen => Negate
     Tilde => Complement
     tok => @utils.die("\{tok} is not a valid unary operator")
+  }
+}
+
+///|
+fn parse_binop(self : TokenStream) -> BinaryOp {
+  match self.take().token_type {
+    Plus => Add
+    Hyphen => Sub
+    Star => Mul
+    Slash => Div
+    Percent => Rem
+    tok => @utils.die("\{tok} is not a valid binary operator")
   }
 }
 
@@ -125,5 +169,27 @@ test "redundate_parens" {
     content=
       #|{function_def: {name: "main", body: Return(Unary(Negate, Constant(10)))}}
     ,
+  )
+}
+
+///|
+test {
+  let content = "1+2*3+4"
+  let tokens = @lexer.lex(content)
+  let ast = parse_expr(tokens, 0)
+  inspect!(
+    ast,
+    content="Binary(Add, Binary(Add, Constant(1), Binary(Mul, Constant(2), Constant(3))), Constant(4))",
+  )
+}
+
+///|
+test "expr 2" {
+  let content = " ~2 + 3"
+  let tokens = @lexer.lex(content)
+  let ast = parse_expr(tokens, 0)
+  inspect!(
+    ast,
+    content="Unary(Complement, Binary(Add, Constant(2), Constant(3)))",
   )
 }

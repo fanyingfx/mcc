@@ -1,4 +1,24 @@
 ///|
+priv trait OpearandToString {
+  str(Self) -> String
+}
+
+///|
+impl OpearandToString for @backend.UnaryOp with str(self) {
+  match self {
+    Neg => "neg"
+    Not => "not"
+  }
+}
+
+///|
+impl OpearandToString for @backend.BinaryOp with str(self) {
+  match self {
+    Sub => "sub"
+    Add => "add"
+    Mul => "imul"
+  }
+}
 
 ///|
 let start_main =
@@ -41,18 +61,13 @@ fn emit_instruction(instr : @backend.Instruction) -> String {
       #|mov rsp, rbp
       #|  pop rbp
       #|  ret
-    Unary(op, operand) => "\{show_unop(op)} \{show_operand(operand)}"
+    Unary(op, operand) => "\{op.str()} \{show_operand(operand)}"
     AllocateStack(i) => "sub rsp, \{i}"
+    Idiv(operand) => "idiv \{show_operand(operand)}"
+    Binary(op, e1, e2) => "\{op.str()} \{show_operand(e1)}, \{show_operand(e2)}"
+    Cdq => "cdq"
   }
   instrction + "\n"
-}
-
-///|
-fn show_unop(op : @backend.UnaryOp) -> String {
-  match op {
-    Neg => "neg"
-    Not => "not"
-  }
 }
 
 ///|
@@ -62,7 +77,8 @@ fn show_operand(operand : @backend.Operand) -> String {
     Reg(AX) => "eax"
     Reg(R10) => "r10d"
     Stack(i) => "dword [rbp \{i}]"
+    Reg(DX) => "edx"
+    Reg(R11) => "r11d"
     Pseudo(_) => @utils.die("Pseudo should not in emit pass")
   }
 }
-
