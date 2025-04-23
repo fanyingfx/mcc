@@ -22,7 +22,8 @@ fn Setting::get_setting() -> Setting {
   }
   let basename = filename.trim_end("c").trim_end(".")
   let preprocessed_src = basename + ".i"
-  @ffi.run_cmd("gcc -E -P \{filename} -o \{preprocessed_src}")
+  // @ffi.run_cmd("gcc -E -P \{filename} -o \{preprocessed_src}")
+  @ffi.preprocess(filename,preprocessed_src)
   // let stage = if args.length() == 4 { args[3] } else { "--compile" }
   let stage_str = stage.trim_start("-")
   let stage = match stage_str {
@@ -79,5 +80,6 @@ fn main {
   // println(setting.asm_file())
   @fs.write_string_to_file?(setting.asm_file(), asm_str).unwrap()
   println(setting.asm_file())
-  @ffi.run_cmd("fasm \{setting.asm_file()}")
+  @ffi.fasm(setting.asm_file())
+  // @ffi.run_cmd("fasm \{setting.asm_file()}")
 }
