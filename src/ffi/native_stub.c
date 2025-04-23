@@ -11,14 +11,14 @@ MOONBIT_FFI_EXPORT int32_t run_cmd(moonbit_bytes_t cmd) {
 
     return system(cmd);
 }
-MOONBIT_FFI_EXPORT int preprocess(moonbit_bytes_t c_filename,moonbit_bytes_t processed_filename){
+MOONBIT_FFI_EXPORT void preprocess(moonbit_bytes_t c_filename,moonbit_bytes_t processed_filename){
     char*args[]={"gcc","-E","-P",c_filename,"-o",processed_filename,NULL};
-    return system_execv("/usr/bin/gcc",args);
+    if (system_execv("/usr/bin/gcc",args)!=0) exit(1);
 }
 
-MOONBIT_FFI_EXPORT int fasm(moonbit_bytes_t asm_filename){
+MOONBIT_FFI_EXPORT void fasm(moonbit_bytes_t asm_filename){
     char*args[]={"fasm",asm_filename,NULL};
-    return system_execv("/usr/bin/fasm",args);
+    if(system_execv("/usr/bin/fasm",args)!=0) exit(1);
 }
 
 int system_execv(const char *path, char *const argv[]) {

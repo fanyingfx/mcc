@@ -36,30 +36,24 @@ fn mbt_string_to_utf8_bytes(str : String, is_filename : Bool) -> Bytes {
   Bytes::from_array(res)
 }
 
-extern "C" fn preprocess_ffi(cfilename:Bytes,preprocessed_filename:Bytes)->Int = "preprocess"
-extern "C" fn fasm_ffi(asm_filename:Bytes)->Int = "fasm"
+///|
+extern "C" fn preprocess_ffi(
+  cfilename : Bytes,
+  preprocessed_filename : Bytes
+) -> Unit = "preprocess"
 
-pub fn preprocess(cfilename:String,preprocessed_filename:String)->Unit{
-  let _status = preprocess_ffi(mbt_string_to_utf8_bytes(cfilename,true),mbt_string_to_utf8_bytes(preprocessed_filename,true))
-  if _status != 0{
-    panic()
-  }
-}
-pub fn fasm(asm_filename:String)->Unit{
-  let _status = fasm_ffi(mbt_string_to_utf8_bytes(asm_filename,true))
-    if _status != 0{
-    panic()
-  }
+///|
+extern "C" fn fasm_ffi(asm_filename : Bytes) -> Unit = "fasm"
+
+///|
+pub fn preprocess(cfilename : String, preprocessed_filename : String) -> Unit {
+  preprocess_ffi(
+    mbt_string_to_utf8_bytes(cfilename, true),
+    mbt_string_to_utf8_bytes(preprocessed_filename, true),
+  )
 }
 
 ///|
-// extern "C"  fn run_cmd_ffi(cmd : Bytes) -> Int = "run_cmd"
-
-///|
-/// 
-// pub fn run_cmd(cmd : String) -> Unit {
-//   let _status = run_cmd_ffi(mbt_string_to_utf8_bytes(cmd, true))
-//   // if status != 0 {
-//   //   panic()
-//   // }
-// }
+pub fn fasm(asm_filename : String) -> Unit {
+  fasm_ffi(mbt_string_to_utf8_bytes(asm_filename, true))
+}
