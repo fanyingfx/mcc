@@ -14,8 +14,13 @@ pub enum Instruction {
   Mov(dst~ : Operand, src~ : Operand)
   Unary(UnaryOp, Operand)
   Binary(BinaryOp,Operand,Operand)
+  Cmp(Operand,Operand)
   Idiv(Operand)
   Cdq
+  Jmp(String)
+  JmpCC(CondCode,String)
+  SetCC(CondCode,Operand)
+  Label(String)
   AllocateStack(Int)
   Ret
 } derive(Show)
@@ -45,3 +50,12 @@ pub enum Reg {
   DX
   R11
 } derive(Show)
+
+pub enum CondCode{
+  E
+  NE
+  G
+  GE
+  L
+  LE
+}derive(Show)

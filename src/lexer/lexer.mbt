@@ -168,6 +168,27 @@ fn next_token(self : Lexer) -> Token {
         '?' => QuestionMark
         ':' => Colon
         ',' => Comma
+        '!' => if self.match_next_char('=') { BangEqual } else { Bang }
+        '=' => if self.match_next_char('=') { DoubleEqual } else { Equal }
+        '<' => if self.match_next_char('=') { LessOrEqual } else { LessThan }
+        '>' =>
+          if self.match_next_char('=') {
+            GreaterOrEqual
+          } else {
+            GreaterThan
+          }
+        '&' =>
+          if self.match_next_char('&') {
+            LogicAnd
+          } else {
+            @utils.die("'&' not suppoorted yet")
+          }
+        '|' =>
+          if self.match_next_char('|') {
+            LogicOr
+          } else {
+            @utils.die("'|' not supported yet")
+          }
         _ => @utils.die("Unknown token '\{c}'")
       }
     None => EOF
@@ -202,8 +223,6 @@ test "simple main" {
     lex(content),
     content=
       #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(2), position: 2:13}, {token_type: Semicolon, position: 2:14}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:3}])
-
-
     ,
   )
 }
@@ -218,8 +237,6 @@ test "simple main" {
     lex(content),
     content=
       #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(100), position: 2:13}, {token_type: Semicolon, position: 2:16}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:3}])
-
-
     ,
   )
 }
@@ -230,8 +247,6 @@ test "comment" {
     lex("// 1234"),
     content=
       #|@queue.of([{token_type: Comment("/ 1234"), position: 1:2}, {token_type: EOF, position: 1:9}])
-
-
     ,
   )
   let multiple_comment =
@@ -242,8 +257,6 @@ test "comment" {
     lex(multiple_comment),
     content=
       #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf"), position: 1:4}, {token_type: EOF, position: 3:12}])
-
-
     ,
   )
   let multiple_comment =
@@ -254,8 +267,6 @@ test "comment" {
     lex(multiple_comment),
     content=
       #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf*"), position: 1:4}, {token_type: EOF, position: 3:13}])
-
-
     ,
   )
 }

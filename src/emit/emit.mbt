@@ -1,18 +1,25 @@
 ///|
-priv trait OpearandToString {
+priv trait ShowOp {
   str(Self) -> String
 }
 
 ///|
-impl OpearandToString for @backend.UnaryOp with str(self) {
+priv trait ShowOperand {
+  byte(Self) -> String
+  dword(Self) -> String
+}
+
+///|
+impl ShowOp for @backend.UnaryOp with str(self) {
   match self {
     Neg => "neg"
     Not => "not"
   }
 }
 
+
 ///|
-impl OpearandToString for @backend.BinaryOp with str(self) {
+impl ShowOp for @backend.BinaryOp with str(self) {
   match self {
     Sub => "sub"
     Add => "add"
@@ -56,29 +63,60 @@ fn emit_function(function_def : @backend.FunctionDef) -> String {
 ///|
 fn emit_instruction(instr : @backend.Instruction) -> String {
   let instrction = match instr {
-    Mov(dst~, src~) => "mov \{show_operand(dst)}, \{show_operand(src)}"
+    Mov(dst~, src~) => "mov \{dst.dword()}, \{src.dword()}"
     Ret =>
       #|mov rsp, rbp
       #|  pop rbp
       #|  ret
-    Unary(op, operand) => "\{op.str()} \{show_operand(operand)}"
+    Unary(op, operand) => "\{op.str()} \{operand.dword()}"
     AllocateStack(i) => "sub rsp, \{i}"
-    Idiv(operand) => "idiv \{show_operand(operand)}"
-    Binary(op, e1, e2) => "\{op.str()} \{show_operand(e1)}, \{show_operand(e2)}"
+    Idiv(operand) => "idiv \{operand.dword()}"
+    Binary(op, e1, e2) => "\{op.str()} \{e1.dword()}, \{e2.dword()}"
     Cdq => "cdq"
+    Jmp(label) => "jmp .L\{label}"
+    Cmp(operand1, operand2) => "cmp \{operand1.dword()}, \{operand2.dword()}"
+    JmpCC(cond_code, label) => "j\{convert_cond(cond_code)} .L\{label}"
+    SetCC(cond_code, operand) =>
+      "set\{convert_cond(cond_code)} \{operand.byte()}"
+    Label(label) => ".L\{label}:"
   }
   instrction + "\n"
 }
 
 ///|
-fn show_operand(operand : @backend.Operand) -> String {
-  match operand {
+fn convert_cond(cond_code : @backend.CondCode) -> String {
+  match cond_code {
+    L => "l"
+    GE => "ge"
+    G => "g"
+    NE => "ne"
+    E => "e"
+    LE => "le"
+  }
+}
+
+///|
+impl ShowOperand for @backend.Operand with dword(self) {
+  match self {
     Imm(i) => i.to_string()
     Reg(AX) => "eax"
     Reg(R10) => "r10d"
     Stack(i) => "dword [rbp \{i}]"
     Reg(DX) => "edx"
     Reg(R11) => "r11d"
+    Pseudo(_) => @utils.die("Pseudo should not in emit pass")
+  }
+}
+
+///|
+impl ShowOperand for @backend.Operand with byte(self) {
+  match self {
+    Imm(i) => i.to_string()
+    Reg(AX) => "al"
+    Reg(DX) => "dl"
+    Reg(R10) => "r10b"
+    Stack(i) => "byte [rbp \{i}]"
+    Reg(R11) => "r11b"
     Pseudo(_) => @utils.die("Pseudo should not in emit pass")
   }
 }

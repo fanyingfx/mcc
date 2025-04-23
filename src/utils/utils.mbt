@@ -19,6 +19,13 @@ pub fn reset_counter() -> Unit {
 }
 
 ///|
+pub fn make_label(label : String) -> String {
+  let name = label + counter.val.to_string()
+  counter.val += 1
+  name
+}
+
+///|
 pub fn make_temporary() -> String {
   let temp = "tmp.\{counter.val}"
   counter.val += 1

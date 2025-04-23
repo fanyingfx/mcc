@@ -12,8 +12,12 @@ priv trait Precedence {
 ///|
 impl Precedence for TokenType with precedence(self) {
   match self {
-    Plus | Hyphen => 45
     Star | Slash | Percent => 50
+    Plus | Hyphen => 45
+    LessThan | GreaterThan | LessOrEqual | GreaterOrEqual => 35
+    DoubleEqual | BangEqual => 30
+    LogicAnd => 10
+    LogicOr => 5
     tok => @utils.die("\{tok} is not supported yet")
   }
 }
@@ -65,7 +69,20 @@ fn parse_expr(self : TokenStream, min_prec : Int) -> Expr {
 
 ///|
 fn is_binary_op(token_type : TokenType) -> Bool {
-  token_type is (Plus | Hyphen | Star | Slash | Percent)
+  token_type
+  is (Plus
+  | Hyphen
+  | Star
+  | Slash
+  | Percent
+  | LogicAnd
+  | LogicOr
+  | DoubleEqual
+  | BangEqual
+  | LessThan
+  | GreaterThan
+  | LessOrEqual
+  | GreaterOrEqual)
 }
 
 ///|
@@ -75,7 +92,7 @@ fn parse_factor(self : TokenStream) -> Expr {
       let _ = self.take()
       Constant(i)
     }
-    Hyphen | Tilde => {
+    Bang | Hyphen | Tilde=> { // is unary opeartor
       let op = self.parse_unop()
       let inner_expr = self.parse_factor()
       Unary(op, inner_expr)
@@ -95,6 +112,7 @@ fn parse_unop(self : TokenStream) -> UnaryOp {
   match self.take().token_type {
     Hyphen => Negate
     Tilde => Complement
+    Bang => Not
     tok => @utils.die("\{tok} is not a valid unary operator")
   }
 }
@@ -107,6 +125,14 @@ fn parse_binop(self : TokenStream) -> BinaryOp {
     Star => Mul
     Slash => Div
     Percent => Rem
+    LogicAnd => And
+    LogicOr => Or
+    DoubleEqual => Equal
+    BangEqual => NotEqual
+    LessThan => LessThan
+    GreaterThan => GreaterThan
+    LessOrEqual => LessOrEqual
+    GreaterOrEqual => GreaterOrEqual
     tok => @utils.die("\{tok} is not a valid binary operator")
   }
 }
@@ -190,6 +216,6 @@ test "expr 2" {
   let ast = parse_expr(tokens, 0)
   inspect!(
     ast,
-    content="Unary(Complement, Binary(Add, Constant(2), Constant(3)))",
+    content="Binary(Add, Unary(Complement, Constant(2)), Constant(3))",
   )
 }
