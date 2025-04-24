@@ -1,28 +1,28 @@
 ///|
-pub(all) struct Program {
+pub struct Program {
   function_def : FunctionDef
 } derive(Show)
 
 ///|
-pub(all) struct FunctionDef {
+pub struct FunctionDef {
   name : String
   body : Stmt
 } derive(Show)
 
 ///|
-pub(all) enum Stmt {
+pub enum Stmt {
   Return(Expr)
 } derive(Show)
 
 ///|
-pub(all) enum Expr {
+pub enum Expr {
   Constant(Int)
   Unary(UnaryOp, Expr)
   Binary(BinaryOp, Expr, Expr)
 } derive(Show)
 
 ///|
-pub(all) enum UnaryOp {
+pub enum UnaryOp {
   Complement
   Negate
   Not
