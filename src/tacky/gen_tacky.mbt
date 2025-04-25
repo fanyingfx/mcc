@@ -94,7 +94,6 @@ fn convert_unop(op : @parser.UnaryOp) -> UnaryOp {
   match op {
     Complement => Complement
     Negate => Negate
-    // _ => ...
     Not => Not
   }
 }
@@ -107,7 +106,6 @@ fn convert_binop(op : @parser.BinaryOp) -> BinaryOp {
     Sub => Sub
     Add => Add
     Rem => Rem
-
     Equal => Equal
     LessThan => LessThan
     NotEqual => NotEqual
@@ -131,7 +129,9 @@ test "tacky" {
   inspect!(
     tacky,
     content=
-      #|{function_def: {name: "main", body: [Return(Constant(3))]}}
+      #|{function_def: 
+      #|main:
+      #|  return Constant(3)}
     ,
   )
 }
@@ -149,7 +149,10 @@ test "tacky" {
   inspect!(
     tacky,
     content=
-      #|{function_def: {name: "main", body: [Unary(Complement, dst=Var("tmp.0"), src=Constant(2)), Return(Var("tmp.0"))]}}
+      #|{function_def: 
+      #|main:
+      #|  Var("tmp.0") = ~Constant(2)
+      #|  return Var("tmp.0")}
     ,
   )
 }
@@ -167,7 +170,12 @@ test "tacky" {
   inspect!(
     tacky,
     content=
-      #|{function_def: {name: "main", body: [Unary(Negate, dst=Var("tmp.0"), src=Constant(8)), Unary(Complement, dst=Var("tmp.1"), src=Var("tmp.0")), Unary(Negate, dst=Var("tmp.2"), src=Var("tmp.1")), Return(Var("tmp.2"))]}}
+      #|{function_def: 
+      #|main:
+      #|  Var("tmp.0") = -Constant(8)
+      #|  Var("tmp.1") = ~Var("tmp.0")
+      #|  Var("tmp.2") = -Var("tmp.1")
+      #|  return Var("tmp.2")}
     ,
   )
 }

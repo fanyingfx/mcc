@@ -7,19 +7,49 @@ pub struct Program {
 pub struct FunctionDef {
   name : String
   body : Array[Instruction]
-} derive(Show)
+}
+
+///|
+impl Show for FunctionDef with to_string(self) {
+  let body = self.body.map(fn(inst) { "  " +inst.to_string() }).join("\n")
+  "\n\{self.name}:\n\{body}"
+}
+
+///|
+impl Show for FunctionDef with output(self, logger) {
+  logger.write_string(self.to_string())
+}
 
 ///|
 pub enum Instruction {
   Return(Val)
   Unary(UnaryOp, dst~ : Val, src~ : Val)
   Binary(BinaryOp, dst~ : Val, src1~ : Val, src2~ : Val)
-  Copy( dst~ : Val, src~ : Val)
+  Copy(dst~ : Val, src~ : Val)
   Jump(String)
   JumpIfZero(Val, String)
   JumpIfNotZero(Val, String)
   Label(String)
-} derive(Show)
+}
+
+///|
+pub impl Show for Instruction with to_string(self) {
+  match self {
+    JumpIfNotZero(v, label) => "jnz \{v} \{label}"
+    JumpIfZero(v, label) => "jz \{v} \{label}"
+    Jump(label) => "jmp \{label}"
+    Copy(dst~, src~) => "\{dst} = \{src}"
+    Binary(op, dst~, src1~, src2~) => "\{dst} = \{src1} \{op} \{src2}"
+    Unary(op, dst~, src~) => "\{dst} = \{op}\{src}"
+    Return(v) => "return \{v}"
+    Label(label) => "\{label}:"
+  }
+}
+
+///|
+pub impl Show for Instruction with output(self, logger) {
+  logger.write_string(self.to_string())
+}
 
 ///|
 pub enum Val {
@@ -32,7 +62,21 @@ pub enum UnaryOp {
   Complement
   Negate
   Not
-} derive(Show)
+}
+
+///|
+pub impl Show for UnaryOp with to_string(self) {
+  match self {
+    Negate => "-"
+    Complement => "~"
+    Not => "!"
+  }
+}
+
+///|
+pub impl Show for UnaryOp with output(self, logger) {
+  logger.write_string(self.to_string())
+}
 
 ///|
 pub enum BinaryOp {
@@ -47,4 +91,28 @@ pub enum BinaryOp {
   LessOrEqual
   GreaterThan
   GreaterOrEqual
-} derive(Show)
+}
+
+///|
+pub impl Show for BinaryOp with output(self, logger) {
+  logger.write_string(self.to_string())
+}
+
+///|
+pub impl Show for BinaryOp with to_string(self) {
+  match self {
+    GreaterThan => ">"
+    LessOrEqual => "<="
+    LessThan => "<"
+    NotEqual => "!="
+    Equal => "=="
+    Rem => "%"
+    Div => "/"
+    Mul => "*"
+    Sub => "-"
+    Add => "+"
+    GreaterOrEqual => ">="
+  }
+}
+
+///|
