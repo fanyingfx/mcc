@@ -20,12 +20,13 @@ fn Setting::get_setting() -> Setting {
   let stage = match stage_str {
     "lex" => Lex
     "parse" => Parse
+    "validate"=>Validate
     "tacky" => Tacky
     "codegen" => CodeGen
     "compile" => Compile
     _ => @utils.die("\{stage_str} is not a valid stage")
   }
-  let basename = filename.trim_end("ci").trim_end(".")
+  let basename = filename.trim_end("ci").trim_end(".").to_string()
   { filename, basename, stage }
 }
 
@@ -38,6 +39,7 @@ fn asm_file(self : Setting) -> String {
 enum Stage {
   Lex
   Parse
+  Validate
   Tacky
   CodeGen
   Compile
@@ -58,7 +60,12 @@ fn main {
     println("End in \{setting.stage}")
     return
   }
-  let tacky = @tacky.emit_tacky(ast)
+  let validated_ast = @semantic_analysis.resolve(ast)
+   if setting.stage is Validate {
+    println("End in \{setting.stage}")
+    return
+  }
+  let tacky = @tacky.emit_tacky(validated_ast)
   if setting.stage is Tacky {
     println("End in \{setting.stage}")
     return

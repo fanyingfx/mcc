@@ -8,6 +8,7 @@
     "moonbitlang/x/fs",
     "moonbitlang/x/sys",
     "mcc/utils",
-    "mcc/tacky"
+    "mcc/tacky",
+    "mcc/semantic_analysis"
   ]
 }

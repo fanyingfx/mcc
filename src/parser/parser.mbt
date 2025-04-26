@@ -18,6 +18,7 @@ impl Precedence for TokenType with precedence(self) {
     DoubleEqual | BangEqual => 30
     LogicAnd => 10
     LogicOr => 5
+    Equal => 1
     tok => @utils.die("\{tok} is not supported yet")
   }
 }
@@ -33,35 +34,81 @@ pub fn parse(tokens : @queue.T[Token]) -> Program {
 ///|
 fn parse_func_def(self : TokenStream) -> FunctionDef {
   self.expect(KWInt)
-  let name = match self.take() {
-    { token_type: Identifier(name), .. } => name
-    tok => @utils.die("\{tok} is Not a vaild funciton")
-  }
+  let name = self.parse_identifier()
   self.expect(LParen)
   self.expect(KWVoid)
   self.expect(RParen)
   self.expect(LBrace)
-  let stmt = self.parse_statement()
+  let body = []
+  while not(self.peek().token_type is RBrace) {
+    let block_item = self.parse_block_item()
+    body.push(block_item)
+  }
   self.expect(RBrace)
-  { name, body: stmt }
+  { name, body }
+}
+
+///|
+fn parse_block_item(self : TokenStream) -> BlockItem {
+  match self.peek().token_type {
+    KWInt => D(self.parse_declaration())
+    _ => S(self.parse_statement())
+  }
+}
+
+///|
+fn parse_declaration(self : TokenStream) -> Decl {
+  let _ = self.take()
+  let name = self.parse_identifier()
+  let init = match self.peek().token_type {
+    Equal => {
+      let _ = self.take()
+      Some(self.parse_expression(0))
+    }
+    _ => None
+  }
+  self.expect(Semicolon)
+  { name, init }
 }
 
 ///|
 fn parse_statement(self : TokenStream) -> Stmt {
-  self.expect(KWReturn)
-  let return_val = self.parse_expr(0)
-  self.expect(Semicolon)
-  Return(return_val)
+  match self.peek().token_type {
+    KWReturn => {
+      let _ = self.take()
+      let return_val = self.parse_expression(0)
+      self.expect(Semicolon)
+      Return(return_val)
+    }
+    Semicolon => {
+      let _ = self.take()
+      Null
+    }
+    _ => {
+      let expr = self.parse_expression(0)
+      self.expect(Semicolon)
+      Expression(expr)
+    }
+  }
 }
 
 ///|
-fn parse_expr(self : TokenStream, min_prec : Int) -> Expr {
+fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
   let mut left = self.parse_factor()
   let mut next_token = self.peek().token_type
   while is_binary_op(next_token) && next_token.precedence() >= min_prec {
-    let op = self.parse_binop()
-    let right = self.parse_expr(next_token.precedence() + 1)
-    left = Binary(op, left, right)
+    match next_token {
+      Equal => {
+        let _ = self.take()
+        let right = self.parse_expression(next_token.precedence())
+        left = Assignment(left~, right~)
+      }
+      _ => {
+        let op = self.parse_binop()
+        let right = self.parse_expression(next_token.precedence() + 1)
+        left = Binary(op, left, right)
+      }
+    }
     next_token = self.peek().token_type
   }
   left
@@ -82,7 +129,8 @@ fn is_binary_op(token_type : TokenType) -> Bool {
   | LessThan
   | GreaterThan
   | LessOrEqual
-  | GreaterOrEqual)
+  | GreaterOrEqual
+  | Equal)
 }
 
 ///|
@@ -92,14 +140,18 @@ fn parse_factor(self : TokenStream) -> Expr {
       let _ = self.take()
       Constant(i)
     }
-    Bang | Hyphen | Tilde=> { // is unary opeartor
+    Bang | Hyphen | Tilde => { // is unary opeartor
       let op = self.parse_unop()
       let inner_expr = self.parse_factor()
       Unary(op, inner_expr)
     }
+    Identifier(name) => {
+      let _ = self.take()
+      Var(name)
+    }
     LParen => {
       let _ = self.take()
-      let inner_expr = self.parse_expr(0)
+      let inner_expr = self.parse_expression(0)
       self.expect(RParen)
       inner_expr
     }
@@ -158,6 +210,14 @@ fn take(self : TokenStream) -> Token {
 }
 
 ///|
+fn parse_identifier(self : TokenStream) -> String {
+  match self.take() {
+    { token_type: Identifier(name), .. } => name
+    tok => @utils.die("\{tok} is Not a vaild funciton")
+  }
+}
+
+///|
 fn expect(self : TokenStream, expected : TokenType) -> Unit {
   let actual = self.take().token_type
   if actual != expected {
@@ -169,14 +229,35 @@ fn expect(self : TokenStream, expected : TokenType) -> Unit {
 test {
   let content =
     #| int main(void){
-    #|    return 3;
+    #|    int a = 3;
+    #|    int b = a;
+    #|    int c;
+    #|    return a+b;
     #|}
   let tokens = @lexer.lex(content)
   let ast = parse(tokens)
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: Return(Constant(3))}}
+      #|{function_def: {name: "main", body: [D({name: "a", init: Some(Constant(3))}), D({name: "b", init: Some(Var("a"))}), D({name: "c", init: None}), S(Return(Binary(Add, Var("a"), Var("b"))))]}}
+    ,
+  )
+}
+
+///|
+test "Assignment" {
+  let content =
+    #| int main(void){
+    #|    int a = b = 3;
+    #|    return a+b;
+    #|}
+  let tokens = @lexer.lex(content)
+  let ast = parse(tokens)
+  inspect!(
+    ast,
+    content=
+      #|{function_def: {name: "main", body: [D({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))}), S(Return(Binary(Add, Var("a"), Var("b"))))]}}
+
     ,
   )
 }
@@ -193,7 +274,7 @@ test "redundate_parens" {
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: Return(Unary(Negate, Constant(10)))}}
+      #|{function_def: {name: "main", body: [S(Return(Unary(Negate, Constant(10))))]}}
     ,
   )
 }
@@ -202,7 +283,7 @@ test "redundate_parens" {
 test {
   let content = "1+2*3+4"
   let tokens = @lexer.lex(content)
-  let ast = parse_expr(tokens, 0)
+  let ast = parse_expression(tokens, 0)
   inspect!(
     ast,
     content="Binary(Add, Binary(Add, Constant(1), Binary(Mul, Constant(2), Constant(3))), Constant(4))",
@@ -213,7 +294,7 @@ test {
 test "expr 2" {
   let content = " ~2 + 3"
   let tokens = @lexer.lex(content)
-  let ast = parse_expr(tokens, 0)
+  let ast = parse_expression(tokens, 0)
   inspect!(
     ast,
     content="Binary(Add, Unary(Complement, Constant(2)), Constant(3))",

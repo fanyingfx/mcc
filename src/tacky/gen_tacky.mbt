@@ -7,37 +7,77 @@ pub fn emit_tacky(program : @parser.Program) -> Program {
 ///|
 fn emit_function_def(function_def : @parser.FunctionDef) -> FunctionDef {
   let name = function_def.name
-  let body = emit_stmt(function_def.body)
+  let body = []
+  for block_item in function_def.body {
+    body.append(emit_block_item(block_item))
+  }
+  body.push(Return(Constant(0)))
   { name, body }
 }
 
 ///|
-fn emit_stmt(stmt : @parser.Stmt) -> Array[Instruction] {
-  match stmt {
-    Return(expr) => {
-      let (instructions, dst) = emit_expr(expr)
-      instructions.push(Return(dst))
+fn emit_block_item(block_item : @parser.BlockItem) -> Array[Instruction] {
+  match block_item {
+    D(decl) => emit_declaration(decl)
+    S(stmt) => emit_statement(stmt)
+  }
+}
+
+///|
+fn emit_declaration(decl : @parser.Decl) -> Array[Instruction] {
+  match decl.init {
+    None => []
+    Some(expr) => {
+      let (instructions, result) = emit_expression(expr)
+      instructions.push(Copy(dst=Var(decl.name), src=result))
       instructions
     }
   }
 }
 
 ///|
-fn emit_expr(expr : @parser.Expr) -> (Array[Instruction], Val) {
+fn emit_statement(stmt : @parser.Stmt) -> Array[Instruction] {
+  match stmt {
+    Return(expr) => {
+      let (instructions, dst) = emit_expression(expr)
+      instructions.push(Return(dst))
+      instructions
+    }
+    Expression(expr) => emit_expression(expr).0
+    Null => []
+  }
+}
+
+///|
+fn emit_expression(expr : @parser.Expr) -> (Array[Instruction], Val) {
   match expr {
     Constant(c) => ([], Constant(c))
     Unary(op, inner) => {
-      let (instructions, src) = emit_expr(inner)
+      let (instructions, src) = emit_expression(inner)
       let dst_name = @utils.make_temporary()
       let dst = Var(dst_name)
       let tacky_op = convert_unop(op)
       instructions.push(Unary(tacky_op, dst~, src~))
       (instructions, dst)
     }
+    Binary(_) => emit_binary(expr)
+    Var(v) => ([], Var(v))
+    Assignment(left=Var(v), right~) => {
+      let (instructions, result) = emit_expression(right)
+      instructions.push(Copy(dst=Var(v), src=result))
+      (instructions, Var(v))
+    }
+    _ => @utils.die("\{expr} Expression can not emit")
+  }
+}
+
+///|
+fn emit_binary(expr : @parser.Expr) -> (Array[Instruction], Val) {
+  match expr {
     Binary(And, e1, e2) => {
       let instructions = []
-      let (instructions1, v1) = emit_expr(e1)
-      let (instructions2, v2) = emit_expr(e2)
+      let (instructions1, v1) = emit_expression(e1)
+      let (instructions2, v2) = emit_expression(e2)
       let false_label = @utils.make_label("false")
       let end_label = @utils.make_label("end")
       let dst_name = @utils.make_temporary()
@@ -56,8 +96,8 @@ fn emit_expr(expr : @parser.Expr) -> (Array[Instruction], Val) {
     }
     Binary(Or, e1, e2) => {
       let instructions = []
-      let (instructions1, v1) = emit_expr(e1)
-      let (instructions2, v2) = emit_expr(e2)
+      let (instructions1, v1) = emit_expression(e1)
+      let (instructions2, v2) = emit_expression(e2)
       let true_label = @utils.make_label("true")
       let end_label = @utils.make_label("end")
       let dst_name = @utils.make_temporary()
@@ -76,8 +116,8 @@ fn emit_expr(expr : @parser.Expr) -> (Array[Instruction], Val) {
     }
     Binary(op, e1, e2) => {
       let instructions = []
-      let (instructions1, src1) = emit_expr(e1)
-      let (instructions2, src2) = emit_expr(e2)
+      let (instructions1, src1) = emit_expression(e1)
+      let (instructions2, src2) = emit_expression(e2)
       let dst_name = @utils.make_temporary()
       let dst = Var(dst_name)
       let tacky_op = convert_binop(op)
@@ -86,6 +126,7 @@ fn emit_expr(expr : @parser.Expr) -> (Array[Instruction], Val) {
       instructions.push(Binary(tacky_op, dst~, src1~, src2~))
       (instructions, dst)
     }
+    _ => @utils.die("Not a binary Expression")
   }
 }
 
