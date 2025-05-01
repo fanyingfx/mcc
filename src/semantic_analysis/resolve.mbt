@@ -51,6 +51,12 @@ fn resovle_statement(self : VariableMap, stmt : Stmt) -> Stmt {
     Expression(e) => Expression(self.resolve_expression(e))
     Return(e) => Return(self.resolve_expression(e))
     Null => Null
+    If(cond, then, elze) => {
+      let cond = self.resolve_expression(cond)
+      let then = self.resovle_statement(then)
+      let elze = elze.map(fn { st => self.resovle_statement(st) })
+      If(cond, then, elze)
+    }
   }
 }
 
@@ -75,5 +81,13 @@ fn resolve_expression(self : VariableMap, expr : Expr) -> Expr {
         right=self.resolve_expression(right),
       )
     }
+  Conditional(cond~,then~,elze~) => {
+    let cond = self.resolve_expression(cond)
+    let then = self.resolve_expression(then)
+    let elze = self.resolve_expression(elze)
+
+    Conditional(cond~,then~,elze~)
+
+  }
   }
 }

@@ -33,7 +33,12 @@ test {
       #|  mov rsp, rbp
       #|  pop rbp
       #|  ret
+      #|  mov eax, 0
+      #|  mov rsp, rbp
+      #|  pop rbp
+      #|  ret
       #|
+
     ,
   )
 }

@@ -18,6 +18,7 @@ impl Precedence for TokenType with precedence(self) {
     DoubleEqual | BangEqual => 30
     LogicAnd => 10
     LogicOr => 5
+    QuestionMark=>3
     Equal => 1
     tok => @utils.die("\{tok} is not supported yet")
   }
@@ -80,6 +81,21 @@ fn parse_statement(self : TokenStream) -> Stmt {
       self.expect(Semicolon)
       Return(return_val)
     }
+    KWIf => {
+      let _ = self.take()
+      self.expect(LParen)
+      let cond = self.parse_expression(0)
+      self.expect(RParen)
+      let then = self.parse_statement()
+      let elze = match self.peek().token_type {
+        KWElse => {
+          let _ = self.take()
+          Some(self.parse_statement())
+        }
+        _ => None
+      }
+      If(cond, then, elze)
+    }
     Semicolon => {
       let _ = self.take()
       Null
@@ -102,6 +118,14 @@ fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
         let _ = self.take()
         let right = self.parse_expression(next_token.precedence())
         left = Assignment(left~, right~)
+      }
+      QuestionMark =>{
+        // left ?expr:expr
+        let _ = self.take()
+        let then = self.parse_expression(0)
+        self.expect(Colon)
+        let elze = self.parse_expression(next_token.precedence()) 
+        left = Conditional(cond=left, then~,elze~)
       }
       _ => {
         let op = self.parse_binop()
@@ -130,7 +154,9 @@ fn is_binary_op(token_type : TokenType) -> Bool {
   | GreaterThan
   | LessOrEqual
   | GreaterOrEqual
-  | Equal)
+  | Equal
+  | QuestionMark
+  )
 }
 
 ///|
@@ -257,7 +283,6 @@ test "Assignment" {
     ast,
     content=
       #|{function_def: {name: "main", body: [D({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))}), S(Return(Binary(Add, Var("a"), Var("b"))))]}}
-
     ,
   )
 }
@@ -298,5 +323,29 @@ test "expr 2" {
   inspect!(
     ast,
     content="Binary(Add, Unary(Complement, Constant(2)), Constant(3))",
+  )
+}
+
+test "if-else" {
+  let content = #|if (a == 3) return a; else b = 8;
+  let tokens = @lexer.lex(content)
+  let ast = parse_statement(tokens)
+  inspect!(
+    ast,
+    content=
+      #|If(Binary(Equal, Var("a"), Constant(3)), Return(Var("a")), Some(Expression(Assignment(left=Var("b"), right=Constant(8)))))
+
+    ,
+  )
+}
+test "expr conditional" {
+  let content = "a?1:b?2:3"
+  let tokens = @lexer.lex(content)
+  let ast = parse_expression(tokens, 0)
+  inspect!(
+    ast,
+    content=
+      #|Conditional(cond=Var("a"), then=Constant(1), elze=Conditional(cond=Var("b"), then=Constant(2), elze=Constant(3)))
+    ,
   )
 }

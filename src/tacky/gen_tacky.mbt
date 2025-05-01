@@ -45,6 +45,26 @@ fn emit_statement(stmt : @parser.Stmt) -> Array[Instruction] {
     }
     Expression(expr) => emit_expression(expr).0
     Null => []
+    If(cond, then, elze) => {
+      let instructions = []
+      let (cond_instrs, cond_val) = emit_expression(cond)
+      let then_instrs = emit_statement(then)
+      let else_instrs = match elze {
+        Some(elze) => emit_statement(elze)
+        _ => []
+      }
+      let else_label = @utils.make_label("else")
+      let end_label = @utils.make_label("end")
+      let _ = instructions
+        ..append(cond_instrs)
+        ..push(JumpIfZero(cond_val, else_label))
+        ..append(then_instrs)
+        ..push(Jump(end_label))
+        ..push(Label(else_label))
+        ..append(else_instrs)
+        ..push(Label(end_label))
+      instructions
+    }
   }
 }
 
@@ -66,6 +86,27 @@ fn emit_expression(expr : @parser.Expr) -> (Array[Instruction], Val) {
       let (instructions, result) = emit_expression(right)
       instructions.push(Copy(dst=Var(v), src=result))
       (instructions, Var(v))
+    }
+    Conditional(cond~, then~, elze~) => {
+      let instructions = []
+      let (cond_instrs, cond_val) = emit_expression(cond)
+      let (then_instrs, then_val) = emit_expression(then)
+      let (else_instrs, else_val) = emit_expression(elze)
+      let dst_name = @utils.make_temporary()
+      let dst = Var(dst_name)
+      let else_label = @utils.make_label("else")
+      let end_label = @utils.make_label("end")
+      let _ = instructions
+        ..append(cond_instrs)
+        ..push(JumpIfZero(cond_val, else_label))
+        ..append(then_instrs)
+        ..push(Copy(dst~, src=then_val))
+        ..push(Jump(end_label))
+        ..push(Label(else_label))
+        ..append(else_instrs)
+        ..push(Copy(dst~, src=else_val))
+        ..push(Label(end_label))
+      (instructions, dst)
     }
     _ => @utils.die("\{expr} Expression can not emit")
   }
@@ -172,7 +213,8 @@ test "tacky" {
     content=
       #|{function_def: 
       #|main:
-      #|  return Constant(3)}
+      #|  return Constant(3)
+      #|  return Constant(0)}
     ,
   )
 }
@@ -193,7 +235,8 @@ test "tacky" {
       #|{function_def: 
       #|main:
       #|  Var("tmp.0") = ~Constant(2)
-      #|  return Var("tmp.0")}
+      #|  return Var("tmp.0")
+      #|  return Constant(0)}
     ,
   )
 }
@@ -216,7 +259,8 @@ test "tacky" {
       #|  Var("tmp.0") = -Constant(8)
       #|  Var("tmp.1") = ~Var("tmp.0")
       #|  Var("tmp.2") = -Var("tmp.1")
-      #|  return Var("tmp.2")}
+      #|  return Var("tmp.2")
+      #|  return Constant(0)}
     ,
   )
 }

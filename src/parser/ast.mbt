@@ -25,6 +25,7 @@ pub(all) struct Decl {
 pub(all) enum Stmt {
   Return(Expr)
   Expression(Expr)
+  If(Expr,Stmt,Stmt?)
   Null
 } derive(Show)
 
@@ -35,6 +36,7 @@ pub(all) enum Expr {
   Unary(UnaryOp, Expr)
   Binary(BinaryOp, Expr, Expr)
   Assignment(left~ : Expr, right~ : Expr)
+  Conditional(cond~:Expr,then~:Expr,elze~:Expr)
 } derive(Show)
 
 ///|
