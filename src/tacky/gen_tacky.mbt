@@ -8,7 +8,7 @@ pub fn emit_tacky(program : @parser.Program) -> Program {
 fn emit_function_def(function_def : @parser.FunctionDef) -> FunctionDef {
   let name = function_def.name
   let body = []
-  for block_item in function_def.body {
+  for block_item in function_def.body._ {
     body.append(emit_block_item(block_item))
   }
   body.push(Return(Constant(0)))
@@ -65,6 +65,7 @@ fn emit_statement(stmt : @parser.Stmt) -> Array[Instruction] {
         ..push(Label(end_label))
       instructions
     }
+    Compound(Block(block)) => block.map(emit_block_item).flatten()
   }
 }
 

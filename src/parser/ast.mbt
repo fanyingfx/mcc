@@ -6,7 +6,7 @@ pub(all) struct Program {
 ///|
 pub(all) struct FunctionDef {
   name : String
-  body : Array[BlockItem]
+  body : Block
 } derive(Show)
 
 ///|
@@ -14,6 +14,9 @@ pub(all) enum BlockItem {
   S(Stmt)
   D(Decl)
 } derive(Show)
+
+///|
+pub(all) type Block Array[BlockItem] derive(Show)
 
 ///|
 pub(all) struct Decl {
@@ -25,7 +28,8 @@ pub(all) struct Decl {
 pub(all) enum Stmt {
   Return(Expr)
   Expression(Expr)
-  If(Expr,Stmt,Stmt?)
+  If(Expr, Stmt, Stmt?)
+  Compound(Block)
   Null
 } derive(Show)
 
@@ -36,7 +40,7 @@ pub(all) enum Expr {
   Unary(UnaryOp, Expr)
   Binary(BinaryOp, Expr, Expr)
   Assignment(left~ : Expr, right~ : Expr)
-  Conditional(cond~:Expr,then~:Expr,elze~:Expr)
+  Conditional(cond~ : Expr, then~ : Expr, elze~ : Expr)
 } derive(Show)
 
 ///|

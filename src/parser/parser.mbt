@@ -18,7 +18,7 @@ impl Precedence for TokenType with precedence(self) {
     DoubleEqual | BangEqual => 30
     LogicAnd => 10
     LogicOr => 5
-    QuestionMark=>3
+    QuestionMark => 3
     Equal => 1
     tok => @utils.die("\{tok} is not supported yet")
   }
@@ -39,6 +39,13 @@ fn parse_func_def(self : TokenStream) -> FunctionDef {
   self.expect(LParen)
   self.expect(KWVoid)
   self.expect(RParen)
+  // self.expect(LBrace)
+  let body = self.parse_block()
+  { name, body }
+}
+
+///|
+fn parse_block(self : TokenStream) -> Block {
   self.expect(LBrace)
   let body = []
   while not(self.peek().token_type is RBrace) {
@@ -46,7 +53,7 @@ fn parse_func_def(self : TokenStream) -> FunctionDef {
     body.push(block_item)
   }
   self.expect(RBrace)
-  { name, body }
+  body
 }
 
 ///|
@@ -100,6 +107,7 @@ fn parse_statement(self : TokenStream) -> Stmt {
       let _ = self.take()
       Null
     }
+    LBrace => Compound(self.parse_block())
     _ => {
       let expr = self.parse_expression(0)
       self.expect(Semicolon)
@@ -119,13 +127,13 @@ fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
         let right = self.parse_expression(next_token.precedence())
         left = Assignment(left~, right~)
       }
-      QuestionMark =>{
+      QuestionMark => {
         // left ?expr:expr
         let _ = self.take()
         let then = self.parse_expression(0)
         self.expect(Colon)
-        let elze = self.parse_expression(next_token.precedence()) 
-        left = Conditional(cond=left, then~,elze~)
+        let elze = self.parse_expression(next_token.precedence())
+        left = Conditional(cond=left, then~, elze~)
       }
       _ => {
         let op = self.parse_binop()
@@ -155,8 +163,7 @@ fn is_binary_op(token_type : TokenType) -> Bool {
   | LessOrEqual
   | GreaterOrEqual
   | Equal
-  | QuestionMark
-  )
+  | QuestionMark)
 }
 
 ///|
@@ -326,18 +333,21 @@ test "expr 2" {
   )
 }
 
+///|
 test "if-else" {
-  let content = #|if (a == 3) return a; else b = 8;
+  let content =
+    #|if (a == 3) return a; else b = 8;
   let tokens = @lexer.lex(content)
   let ast = parse_statement(tokens)
   inspect!(
     ast,
     content=
       #|If(Binary(Equal, Var("a"), Constant(3)), Return(Var("a")), Some(Expression(Assignment(left=Var("b"), right=Constant(8)))))
-
     ,
   )
 }
+
+///|
 test "expr conditional" {
   let content = "a?1:b?2:3"
   let tokens = @lexer.lex(content)

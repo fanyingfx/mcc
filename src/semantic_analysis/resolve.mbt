@@ -1,8 +1,23 @@
 ///|
-priv type VariableMap Map[String, String]
+typealias @parser.(Decl, Stmt, Expr, BlockItem, Block, FunctionDef, Program)
 
 ///|
-typealias @parser.(Decl, Stmt, Expr, BlockItem, FunctionDef, Program)
+priv type VariableMap Map[String, Entry]
+
+///|
+priv struct Entry {
+  new_name : String
+  from_current_block : Bool
+}
+
+///|
+fn copy(self : VariableMap) -> VariableMap {
+  let new_variable_map = {}
+  for k, v in self._ {
+    new_variable_map[k] = { new_name: v.new_name, from_current_block: false }
+  }
+  new_variable_map
+}
 
 ///|
 pub fn resolve(program : Program) -> Program {
@@ -16,11 +31,16 @@ fn resolve_function_def(
   self : VariableMap,
   function_def : FunctionDef
 ) -> FunctionDef {
+  { name: function_def.name, body: self.resolve_block(function_def.body) }
+}
+
+///|
+fn resolve_block(self : VariableMap, block : Block) -> Block {
   let body = []
-  for block_item in function_def.body {
+  for block_item in block._ {
     body.push(self.resolve_block_item(block_item))
   }
-  { name: function_def.name, body }
+  body
 }
 
 ///|
@@ -33,11 +53,11 @@ fn resolve_block_item(self : VariableMap, block_item : BlockItem) -> BlockItem {
 
 ///|
 fn resolve_declaration(self : VariableMap, decl : Decl) -> Decl {
-  if self._.contains(decl.name) {
+  if self._[decl.name] is Some(entry) && entry.from_current_block {
     @utils.die("Duplicate variable declaration!")
   }
-  let unique_name = @utils.make_label(decl.name)
-  self._[decl.name] = unique_name
+  let unique_name = @utils.make_label(decl.name+".")
+  self._[decl.name] = { new_name: unique_name, from_current_block: true }
   let init = match decl.init {
     Some(expr) => Some(self.resolve_expression(expr))
     None => None
@@ -57,6 +77,10 @@ fn resovle_statement(self : VariableMap, stmt : Stmt) -> Stmt {
       let elze = elze.map(fn { st => self.resovle_statement(st) })
       If(cond, then, elze)
     }
+    Compound(Block(block)) => {
+      let new_varialbe_map = self.copy()
+      Compound(new_varialbe_map.resolve_block(block))
+    }
   }
 }
 
@@ -68,7 +92,7 @@ fn resolve_expression(self : VariableMap, expr : Expr) -> Expr {
     Unary(op, expr) => Unary(op, self.resolve_expression(expr))
     Var(v) =>
       match self._[v] {
-        Some(name) => Var(name)
+        Some({ new_name, .. }) => Var(new_name)
         None => @utils.die("Undeclared variable~")
       }
     Constant(i) => Constant(i)
@@ -81,13 +105,11 @@ fn resolve_expression(self : VariableMap, expr : Expr) -> Expr {
         right=self.resolve_expression(right),
       )
     }
-  Conditional(cond~,then~,elze~) => {
-    let cond = self.resolve_expression(cond)
-    let then = self.resolve_expression(then)
-    let elze = self.resolve_expression(elze)
-
-    Conditional(cond~,then~,elze~)
-
-  }
+    Conditional(cond~, then~, elze~) => {
+      let cond = self.resolve_expression(cond)
+      let then = self.resolve_expression(then)
+      let elze = self.resolve_expression(elze)
+      Conditional(cond~, then~, elze~)
+    }
   }
 }

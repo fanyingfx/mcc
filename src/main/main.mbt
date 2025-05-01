@@ -62,10 +62,12 @@ fn main {
   }
   let validated_ast = @semantic_analysis.resolve(ast)
    if setting.stage is Validate {
+    // println(validated_ast)
     println("End in \{setting.stage}")
     return
   }
   let tacky = @tacky.emit_tacky(validated_ast)
+  println(tacky)
   if setting.stage is Tacky {
     println("End in \{setting.stage}")
     return
