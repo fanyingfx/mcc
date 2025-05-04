@@ -272,7 +272,8 @@ test {
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: [D({name: "a", init: Some(Constant(3))}), D({name: "b", init: Some(Var("a"))}), D({name: "c", init: None}), S(Return(Binary(Add, Var("a"), Var("b"))))]}}
+      #|{function_def: {name: "main", body: Block([D({name: "a", init: Some(Constant(3))}), D({name: "b", init: Some(Var("a"))}), D({name: "c", init: None}), S(Return(Binary(Add, Var("a"), Var("b"))))])}}
+
     ,
   )
 }
@@ -289,7 +290,8 @@ test "Assignment" {
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: [D({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))}), S(Return(Binary(Add, Var("a"), Var("b"))))]}}
+      #|{function_def: {name: "main", body: Block([D({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))}), S(Return(Binary(Add, Var("a"), Var("b"))))])}}
+
     ,
   )
 }
@@ -306,7 +308,8 @@ test "redundate_parens" {
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: [S(Return(Unary(Negate, Constant(10))))]}}
+      #|{function_def: {name: "main", body: Block([S(Return(Unary(Negate, Constant(10))))])}}
+
     ,
   )
 }

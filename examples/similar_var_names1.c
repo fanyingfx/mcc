@@ -4,10 +4,10 @@ int main(void) {
   int a1 = 1; // a10
   {
     int a = 2;  // a1
-    int a1 = 2; // a11
+    int a1 = 2; // a11 a12
     {
         
-      int a; // a4
+      int a; // a4 a4
       {
         int a; // a5
         {
@@ -22,7 +22,7 @@ int main(void) {
                   int a = 20; // a10
                   result = a;
                   {
-                    int a; // a11
+                    int a; // a12
                     a = 5;
                     result = result + a;
                   }

@@ -10,24 +10,32 @@ pub fn log[T : Show](msg : T, loc~ : SourceLoc = _) -> Unit {
 }
 
 ///|
-let counter : Ref[Int] = { val: 0 }
+// let counter : Ref[Int] = { val: 0 }
+
+pub struct Counter{
+  mut val:Int
+}
+
+pub fn Counter::new()->Counter{
+  {val:0}
+}
 
 ///| reset counter for testing
 /// only can use in test
-pub fn reset_counter() -> Unit {
-  counter.val = 0
-}
+// pub fn reset_counter() -> Unit {
+//   counter.val = 0
+// }
 
 ///|
-pub fn make_label(label : String) -> String {
-  let name = label + counter.val.to_string()
-  counter.val += 1
+pub fn Counter::make_label(self:Counter,label : String) -> String {
+  let name = label + self.val.to_string()
+  self.val += 1
   name
 }
 
 ///|
-pub fn make_temporary() -> String {
-  let temp = "tmp.\{counter.val}"
-  counter.val += 1
+pub fn make_temporary(self:Counter) -> String {
+  let temp = "tmp.\{self.val}"
+  self.val += 1
   temp
 }

@@ -6,7 +6,7 @@ test {
     #|}
   let tokens = @lexer.lex(content)
   let ast = @parser.parse(tokens)
-  let tacky = @tacky.emit_tacky(ast)
+  let tacky = @tacky.emit_tacky(ast,@utils.Counter::new())
   let asm = @backend.compile(tacky)
   inspect!(
     asm,
