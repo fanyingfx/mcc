@@ -99,7 +99,7 @@ fn make_ident_or_keyword(self : Lexer) -> TokenType {
     Some('a'..='z' | 'A'..='Z' | '_' | '0'..='9') => true
     _ => false
   })
-  match keywords[idstr] {
+  match keywords.get(idstr) {
     None => Identifier(idstr)
     Some(kw) => kw
   }

@@ -74,7 +74,7 @@ fn replace_in_instruction(
 fn replace_operand(self : State, operand : Operand) -> (State, Operand) {
   match operand {
     Pseudo(s) =>
-      match self.offset_map[s] {
+      match self.offset_map.get(s) {
         Some(offset) => (self, Stack(offset))
         None => {
           let current_offset = self.current_offset - 4

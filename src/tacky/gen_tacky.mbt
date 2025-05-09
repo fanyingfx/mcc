@@ -27,8 +27,8 @@ fn emit_block_item(
   counter : Counter
 ) -> Array[Instruction] {
   match block_item {
-    D(decl) => emit_declaration(decl,counter)
-    S(stmt) => emit_statement(stmt,counter)
+    D(decl) => emit_declaration(decl, counter)
+    S(stmt) => emit_statement(stmt, counter)
   }
 }
 
@@ -79,7 +79,87 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
     }
     Compound(Block(block)) =>
       block.map(fn(block) { emit_block_item(block, counter) }).flatten()
+    Continue(label) => [Jump(continue_label(label))]
+    Break(label) => [Jump(break_label(label))]
+    While(cond, body, label) => {
+      let instructions = []
+      let cont_label = continue_label(label)
+      let brk_label = break_label(label)
+      let (cond_instrs, cond_val) = emit_expression(cond, counter)
+      let body_instrs = emit_statement(body, counter)
+      let instructions = instructions
+        ..push(Label(cont_label))
+        ..append(cond_instrs)
+        ..push(JumpIfZero(cond_val, brk_label))
+        ..append(body_instrs)
+        ..push(Jump(cont_label))
+        ..push(Label(brk_label))
+      instructions
+    }
+    DoWhile(body, cond, label) => {
+      let instructions = []
+      let start_label = counter.make_label("do_while_start")
+      let cont_label = continue_label(label)
+      let brk_label = break_label(label)
+      let body_instrs = emit_statement(body, counter)
+      let (cond_instrs, cond_val) = emit_expression(cond, counter)
+      let instructions = instructions
+        ..push(Label(start_label))
+        ..append(body_instrs)
+        ..push(Label(cont_label))
+        ..append(cond_instrs)
+        ..push(JumpIfNotZero(cond_val, start_label))
+        ..push(Label(brk_label))
+      instructions
+    }
+    For(init, cond~, post~, body, label) => {
+      let instructions = []
+      let start_label = counter.make_label("for_start")
+      let cont_label = continue_label(label)
+      let brk_label = break_label(label)
+      let init_instrs = match init {
+        InitDecl(decl) => emit_declaration(decl, counter)
+        InitExpr(expr_opt) =>
+          match expr_opt {
+            Some(expr) => emit_expression(expr, counter).0
+            None => []
+          }
+      }
+      let cond_instrs = match cond {
+        Some(expr) => {
+          let (expr_instrs, cond_val) = emit_expression(expr, counter)
+          expr_instrs.push(JumpIfZero(cond_val, brk_label))
+          expr_instrs
+        }
+        None => []
+      }
+      let post_instrs = match post {
+        Some(expr) => emit_expression(expr, counter).0
+        None => []
+      }
+      let body_instrs = emit_statement(body, counter)
+      let instructions = instructions
+        ..append(init_instrs)
+        ..push(Label(start_label))
+        ..append(cond_instrs)
+        ..append(body_instrs)
+        ..push(Label(cont_label))
+        ..append(post_instrs)
+        ..push(Jump(start_label))
+        ..push(Label(brk_label))
+      instructions
+    }
   }
+}
+
+///|
+fn break_label(label : String) -> String {
+  "\{label}_break"
+}
+
+///|
+fn continue_label(label : String) -> String {
+  "\{label}_continue"
 }
 
 ///|

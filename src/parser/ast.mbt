@@ -29,9 +29,19 @@ pub(all) enum Stmt {
   Return(Expr)
   Expression(Expr)
   If(Expr, Stmt, Stmt?)
+  Break(String)
+  Continue(String)
+  While(Expr,Stmt,String)
+  DoWhile(Stmt,Expr,String)
+  For(ForInit,cond~:Expr?,post~:Expr?,Stmt,String)
   Compound(Block)
   Null
 } derive(Show)
+
+pub(all) enum ForInit{
+  InitDecl(Decl)
+  InitExpr(Expr?)
+}derive(Show)
 
 ///|
 pub(all) enum Expr {

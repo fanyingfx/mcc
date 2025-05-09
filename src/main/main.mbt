@@ -61,12 +61,14 @@ fn main {
     return
   }
   let counter = @utils.Counter::new()
-  let validated_ast = @semantic_analysis.resolve(ast,counter)
+  let resolved_ast = @semantic_analysis.resolve(ast,counter)
+  let validated_ast = @semantic_analysis.loop_label(resolved_ast,counter)
    if setting.stage is Validate {
     // println(validated_ast)
     println("End in \{setting.stage}")
     return
   }
+  
   let tacky = @tacky.emit_tacky(validated_ast,counter)
   println(tacky)
   if setting.stage is Tacky {

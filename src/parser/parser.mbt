@@ -108,6 +108,52 @@ fn parse_statement(self : TokenStream) -> Stmt {
       Null
     }
     LBrace => Compound(self.parse_block())
+    KWWhile => {
+      let _ = self.take()
+      self.expect(LParen)
+      let cond = self.parse_expression(0)
+      self.expect(RParen)
+      let body = self.parse_statement()
+      While(cond, body, "")
+    }
+    KWDo => {
+      let _ = self.take()
+      let body = self.parse_statement()
+      self.expect(KWWhile)
+      self.expect(LParen)
+      let cond = self.parse_expression(0)
+      self.expect(RParen)
+      self.expect(Semicolon)
+      DoWhile(body, cond, "")
+    }
+    KWFor => {
+      let _ = self.take()
+      self.expect(LParen)
+      let for_init = self.parse_for_init()
+      self.expect(Semicolon)
+      let cond = match self.peek().token_type {
+        Semicolon => None
+        _ => Some(self.parse_expression(0))
+      }
+      self.expect(Semicolon)
+      let post = match self.peek().token_type {
+        RParen => None
+        _ => Some(self.parse_expression(0))
+      }
+      self.expect(RParen)
+      let body = self.parse_statement()
+      For(for_init, cond~, post~, body, "")
+    }
+    KWBreak => {
+      let _ = self.take()
+      self.expect(Semicolon)
+      Break("")
+    }
+    KWContinue => {
+      let _ = self.take()
+      self.expect(Semicolon)
+      Continue("")
+    }
     _ => {
       let expr = self.parse_expression(0)
       self.expect(Semicolon)
@@ -147,6 +193,28 @@ fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
 }
 
 ///|
+fn parse_for_init(self : TokenStream) -> ForInit {
+  let for_init = match self.peek().token_type {
+    KWInt => {
+      let _ = self.take()
+      let name = self.parse_identifier()
+      let init = match self.peek().token_type {
+        Equal => {
+          let _ = self.take()
+          Some(self.parse_expression(0))
+        }
+        _ => None
+      }
+      InitDecl({ name, init })
+    }
+    Semicolon => InitExpr(None)
+    _ => InitExpr(Some(self.parse_expression(0)))
+  }
+  // self.expect(Semicolon)
+  for_init
+}
+
+///|
 fn is_binary_op(token_type : TokenType) -> Bool {
   token_type
   is (Plus
@@ -168,7 +236,8 @@ fn is_binary_op(token_type : TokenType) -> Bool {
 
 ///|
 fn parse_factor(self : TokenStream) -> Expr {
-  match self.peek().token_type {
+  let token = self.peek()
+  match token.token_type {
     Constant(i) => {
       let _ = self.take()
       Constant(i)
@@ -188,7 +257,7 @@ fn parse_factor(self : TokenStream) -> Expr {
       self.expect(RParen)
       inner_expr
     }
-    tok => @utils.die("\{tok}, Malformed expression")
+    _ => @utils.die("\{token}, Malformed expression")
   }
 }
 
@@ -273,7 +342,6 @@ test {
     ast,
     content=
       #|{function_def: {name: "main", body: Block([D({name: "a", init: Some(Constant(3))}), D({name: "b", init: Some(Var("a"))}), D({name: "c", init: None}), S(Return(Binary(Add, Var("a"), Var("b"))))])}}
-
     ,
   )
 }
@@ -291,7 +359,6 @@ test "Assignment" {
     ast,
     content=
       #|{function_def: {name: "main", body: Block([D({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))}), S(Return(Binary(Add, Var("a"), Var("b"))))])}}
-
     ,
   )
 }
@@ -309,7 +376,6 @@ test "redundate_parens" {
     ast,
     content=
       #|{function_def: {name: "main", body: Block([S(Return(Unary(Negate, Constant(10))))])}}
-
     ,
   )
 }
@@ -346,6 +412,21 @@ test "if-else" {
     ast,
     content=
       #|If(Binary(Equal, Var("a"), Constant(3)), Return(Var("a")), Some(Expression(Assignment(left=Var("b"), right=Constant(8)))))
+    ,
+  )
+}
+
+///|
+test "for" {
+  let content =
+    #|for (; ;);
+  let tokens = @lexer.lex(content)
+  let ast = parse_statement(tokens)
+  inspect!(
+    ast,
+    content=
+      #|For(InitExpr(None), cond=None, post=None, Null, "")
+
     ,
   )
 }
