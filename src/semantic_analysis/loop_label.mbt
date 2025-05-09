@@ -22,7 +22,7 @@ fn label_block(
   label : String?,
   counter : @utils.Counter
 ) -> @parser.Block {
-  block._.map(fn { item => label_block_item(item, label, counter) })
+  block._.map(label_block_item(_, label, counter))
 }
 
 ///|
@@ -53,9 +53,7 @@ fn label_statement(
     }
     If(cond, then, elze) => {
       let then = label_statement(then, current_label, counter)
-      let elze = elze.map(fn {
-        stmt => label_statement(stmt, current_label, counter)
-      })
+      let elze = elze.map(label_statement(_, current_label, counter))
       If(cond, then, elze)
     }
     While(cond, body, _) => {

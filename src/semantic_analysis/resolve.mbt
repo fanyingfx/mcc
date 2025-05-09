@@ -95,7 +95,7 @@ fn resovle_statement(
     If(cond, then, elze) => {
       let cond = self.resolve_expression(cond)
       let then = self.resovle_statement(then, counter)
-      let elze = elze.map(fn { st => self.resovle_statement(st, counter) })
+      let elze = elze.map(self.resovle_statement(_, counter))
       If(cond, then, elze)
     }
     Compound(Block(block)) => {
@@ -115,12 +115,11 @@ fn resovle_statement(
     }
     For(init, cond~, post~, body, label) => {
       let new_variable_map = self.copy()
-      let init = new_variable_map.resolve_for_init(init,counter)
-      let cond = cond.map(fn{expr => new_variable_map.resolve_expression(expr)})
-      let post = post.map(fn {expr => new_variable_map.resolve_expression(expr)})
-      let body = new_variable_map.resovle_statement(body,counter)
-      For(init,cond~,post~,body,label)
-
+      let init = new_variable_map.resolve_for_init(init, counter)
+      let cond = cond.map(new_variable_map.resolve_expression(_))
+      let post = post.map(new_variable_map.resolve_expression(_))
+      let body = new_variable_map.resovle_statement(body, counter)
+      For(init, cond~, post~, body, label)
     }
   }
 }
@@ -163,7 +162,6 @@ fn resolve_for_init(
 ) -> @parser.ForInit {
   match init {
     InitDecl(decl) => InitDecl(self.resolve_declaration(decl, counter))
-    InitExpr(expr_opt) =>
-      InitExpr(expr_opt.map(fn { exp => self.resolve_expression(exp) }))
+    InitExpr(expr_opt) => InitExpr(expr_opt.map(self.resolve_expression(_)))
   }
 }

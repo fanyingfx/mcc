@@ -77,8 +77,7 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
         ..push(Label(end_label))
       instructions
     }
-    Compound(Block(block)) =>
-      block.map(fn(block) { emit_block_item(block, counter) }).flatten()
+    Compound(Block(block)) => block.map(emit_block_item(_, counter)).flatten()
     Continue(label) => [Jump(continue_label(label))]
     Break(label) => [Jump(break_label(label))]
     While(cond, body, label) => {
