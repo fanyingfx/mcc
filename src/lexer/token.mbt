@@ -44,7 +44,7 @@ pub(all) enum TokenType {
   Comma
   EOF
   Invalid
-  Comment(String)
+  Comment(@string.View)
 } derive(Show, Eq)
 
 ///|

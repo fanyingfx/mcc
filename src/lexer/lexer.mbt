@@ -32,9 +32,9 @@ fn peek_char(self : Lexer) -> Char? {
 }
 
 ///|
-fn eat_while(self : Lexer, predicate : (Char?) -> Bool) -> String {
+fn eat_while(self : Lexer, predicate : (Char) -> Bool) -> String {
   let start = self.pos
-  while predicate(self.peek_char()) {
+  while self.peek_char() is Some(ch) && predicate(ch) {
     if self.peek_char() is None {
       break
     }
@@ -49,9 +49,13 @@ fn advance_char(self : Lexer) -> Unit {
     self.row += 1
     self.col = 1
   }
-  self.ch = self.peek_char()
-  self.col += 1
-  self.pos += 1
+  if self.peek_char() is Some(ch) {
+    self.ch = Some(ch)
+    self.col += 1
+    self.pos += 1
+  } else {
+    self.ch = None
+  }
 }
 
 ///|
@@ -65,8 +69,8 @@ fn skip_whitespace(self : Lexer) -> Unit {
 ///|
 fn make_int(self : Lexer) -> TokenType {
   let int_str = self.eat_while(fn {
-    Some('0'..='9') => true
-    Some('a'..='z' | 'A'..='Z') => panic()
+    '0'..='9' => true
+    'a'..='z' | 'A'..='Z' => panic()
     _ => false
   })
   let v_int = try {
@@ -96,7 +100,7 @@ let keywords : Map[String, TokenType] = {
 ///|
 fn make_ident_or_keyword(self : Lexer) -> TokenType {
   let idstr = self.eat_while(fn {
-    Some('a'..='z' | 'A'..='Z' | '_' | '0'..='9') => true
+    'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => true
     _ => false
   })
   match keywords.get(idstr) {
@@ -118,20 +122,22 @@ fn match_next_char(self : Lexer, ch : Char) -> Bool {
 
 ///|
 fn multiple_comment(self : Lexer) -> TokenType {
-  let start = self.pos
-  while not(self.ch is Some('*') && self.peek_char() is Some('/')) {
-    if self.peek_char() is None {
-      break
-    }
+  let start_offset = self.pos
+  while self.peek_char() is Some(ch) && not(self.ch is Some('*') && ch == '/') {
     self.advance_char()
   }
   self.advance_char()
-  Comment(
-    self.content.substring(
-      start~,
-      end=if self.peek_char() is None { self.pos } else { self.pos + 1 },
-    ),
-  )
+  let mut end_offset = if self.peek_char() is None {
+    self.pos
+  } else {
+    self.pos + 1
+  }
+  if end_offset >= 2 &&
+    self.content.charcode_at(end_offset - 1) == '/' &&
+    self.content.charcode_at(end_offset - 2) == '*' {
+    end_offset = end_offset - 2
+  }
+  Comment(self.content.view(start_offset~, end_offset~))
 }
 
 ///|
@@ -154,10 +160,7 @@ fn next_token(self : Lexer) -> Token {
         '*' => Star
         '/' =>
           if self.match_next_char('/') {
-            let comment = self.eat_while(fn {
-              Some(c) => c != '\n'
-              None => false
-            })
+            let comment = self.eat_while(fn { c => c != '\n' })
             Comment(comment)
           } else if self.match_next_char('*') {
             self.multiple_comment()
@@ -222,7 +225,7 @@ test "simple main" {
   inspect!(
     lex(content),
     content=
-      #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(2), position: 2:13}, {token_type: Semicolon, position: 2:14}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:3}])
+      #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(2), position: 2:13}, {token_type: Semicolon, position: 2:14}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:2}])
     ,
   )
 }
@@ -236,7 +239,7 @@ test "simple main" {
   inspect!(
     lex(content),
     content=
-      #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(100), position: 2:13}, {token_type: Semicolon, position: 2:16}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:3}])
+      #|@queue.of([{token_type: KWInt, position: 1:3}, {token_type: Identifier("main"), position: 1:7}, {token_type: LParen, position: 1:11}, {token_type: KWVoid, position: 1:12}, {token_type: RParen, position: 1:16}, {token_type: LBrace, position: 1:17}, {token_type: KWReturn, position: 2:6}, {token_type: Constant(100), position: 2:13}, {token_type: Semicolon, position: 2:16}, {token_type: RBrace, position: 3:2}, {token_type: EOF, position: 3:2}])
     ,
   )
 }
@@ -246,7 +249,7 @@ test "comment" {
   inspect!(
     lex("// 1234"),
     content=
-      #|@queue.of([{token_type: Comment("/ 1234"), position: 1:2}, {token_type: EOF, position: 1:9}])
+      #|@queue.of([{token_type: Comment("/ 1234"), position: 1:2}, {token_type: EOF, position: 1:8}])
     ,
   )
   let multiple_comment =
@@ -256,7 +259,7 @@ test "comment" {
   inspect!(
     lex(multiple_comment),
     content=
-      #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf"), position: 1:4}, {token_type: EOF, position: 3:12}])
+      #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsd"), position: 1:4}, {token_type: EOF, position: 3:10}])
     ,
   )
   let multiple_comment =
@@ -266,7 +269,7 @@ test "comment" {
   inspect!(
     lex(multiple_comment),
     content=
-      #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf*"), position: 1:4}, {token_type: EOF, position: 3:13}])
+      #|@queue.of([{token_type: Constant(1), position: 1:2}, {token_type: Semicolon, position: 1:3}, {token_type: Comment("*dsdfdsfds\nfsdfsdfds\nsdfsdfsdf*"), position: 1:4}, {token_type: EOF, position: 3:12}])
     ,
   )
 }
