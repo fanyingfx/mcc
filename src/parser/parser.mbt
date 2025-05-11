@@ -20,7 +20,7 @@ impl Precedence for TokenType with precedence(self) {
     LogicOr => 5
     QuestionMark => 3
     Equal | PlusEqual => 1
-    tok => @utils.die("\{tok} is not supported yet")
+    _ => -1 // not a binary operator
   }
 }
 
@@ -166,7 +166,7 @@ fn parse_statement(self : TokenStream) -> Stmt {
 fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
   let mut left = self.parse_factor()
   let mut next_token = self.peek().token_type
-  while is_binary_op(next_token) && next_token.precedence() >= min_prec {
+  while next_token.precedence() >= min_prec {
     match next_token {
       Equal => {
         let _ = self.take()
@@ -174,7 +174,6 @@ fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
         left = Assignment(left~, right~)
       }
       QuestionMark => {
-        // left ?expr:expr
         let _ = self.take()
         let then = self.parse_expression(0)
         self.expect(Colon)
@@ -216,30 +215,9 @@ fn parse_for_init(self : TokenStream) -> ForInit {
     Semicolon => InitExpr(None)
     _ => InitExpr(Some(self.parse_expression(0)))
   }
-  // self.expect(Semicolon)
   for_init
 }
 
-///|
-fn is_binary_op(token_type : TokenType) -> Bool {
-  token_type
-  is (Plus
-  | Hyphen
-  | Star
-  | Slash
-  | Percent
-  | LogicAnd
-  | LogicOr
-  | DoubleEqual
-  | BangEqual
-  | LessThan
-  | GreaterThan
-  | LessOrEqual
-  | GreaterOrEqual
-  | Equal
-  | PlusEqual
-  | QuestionMark)
-}
 
 ///|
 fn parse_factor(self : TokenStream) -> Expr {
