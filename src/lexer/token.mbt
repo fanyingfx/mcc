@@ -29,6 +29,7 @@ pub(all) enum TokenType {
   Slash
   Percent
   Equal
+  PlusEqual
   Bang // ! 
   LogicAnd // && 
   LogicOr //|| 

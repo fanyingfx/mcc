@@ -19,7 +19,7 @@ impl Precedence for TokenType with precedence(self) {
     LogicAnd => 10
     LogicOr => 5
     QuestionMark => 3
-    Equal => 1
+    Equal | PlusEqual => 1
     tok => @utils.die("\{tok} is not supported yet")
   }
 }
@@ -181,6 +181,12 @@ fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
         let elze = self.parse_expression(next_token.precedence())
         left = Conditional(cond=left, then~, elze~)
       }
+      PlusEqual => {
+        let _ = self.take()
+        let right_expr = self.parse_expression(next_token.precedence())
+        let right = Binary(Add, left, right_expr)
+        left = Assignment(left~, right~)
+      }
       _ => {
         let op = self.parse_binop()
         let right = self.parse_expression(next_token.precedence() + 1)
@@ -231,6 +237,7 @@ fn is_binary_op(token_type : TokenType) -> Bool {
   | LessOrEqual
   | GreaterOrEqual
   | Equal
+  | PlusEqual
   | QuestionMark)
 }
 
@@ -426,7 +433,6 @@ test "for" {
     ast,
     content=
       #|For(InitExpr(None), cond=None, post=None, Null, "")
-
     ,
   )
 }

@@ -70,7 +70,7 @@ fn main {
   }
   
   let tacky = @tacky.emit_tacky(validated_ast,counter)
-  println(tacky)
+  // println(tacky)
   if setting.stage is Tacky {
     println("End in \{setting.stage}")
     return

@@ -149,7 +149,7 @@ fn next_token(self : Lexer) -> Token {
         '}' => RBrace
         ';' => Semicolon
         '~' => Tilde
-        '+' => Plus
+        '+' => if self.match_next_char('=') { PlusEqual } else { Plus }
         '-' => if self.match_next_char('-') { DoubleHyphen } else { Hyphen }
         '*' => Star
         '/' =>

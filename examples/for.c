@@ -1,7 +1,7 @@
 int main(void){
     int sum = 0;
-    for(int i=1; i <= 0;i= i+1){
-        sum=sum +i;
+    for(int i=1; i <= 10;i+=1){
+        sum+=i;
     }
     return sum;
 }
