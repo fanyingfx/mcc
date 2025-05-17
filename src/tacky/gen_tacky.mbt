@@ -3,18 +3,25 @@ typealias @utils.Counter
 
 ///|
 pub fn emit_tacky(program : @parser.Program, counter : Counter) -> Program {
-  let function_def = emit_function_def(program.function_def, counter)
-  { function_def, }
+  let function_defs = []
+  for function_decl in program.function_decls {
+    if function_decl.body is Some(body) {
+      let function_def = emit_function_def(function_decl.name, body, counter)
+      function_defs.push(function_def)
+    }
+  }
+  { function_defs, }
 }
 
 ///|
 fn emit_function_def(
-  function_def : @parser.FunctionDef,
+  function_name : String,
+  function_body : @parser.Block,
   counter : Counter
-) -> FunctionDef {
-  let name = function_def.name
+) -> FunctionDecl {
+  let name = function_name
   let body = []
-  for block_item in function_def.body._ {
+  for block_item in function_body._ {
     body.append(emit_block_item(block_item, counter))
   }
   body.push(Return(Constant(0)))
@@ -27,14 +34,15 @@ fn emit_block_item(
   counter : Counter
 ) -> Array[Instruction] {
   match block_item {
-    D(decl) => emit_declaration(decl, counter)
+    D(VarDecl(var_decl)) => emit_variable_declaration(var_decl, counter)
     S(stmt) => emit_statement(stmt, counter)
+    D(FuncDecl(_)) => []
   }
 }
 
 ///|
-fn emit_declaration(
-  decl : @parser.Decl,
+fn emit_variable_declaration(
+  decl : @parser.VariableDecl,
   counter : Counter
 ) -> Array[Instruction] {
   match decl.init {
@@ -117,7 +125,7 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       let cont_label = continue_label(label)
       let brk_label = break_label(label)
       let init_instrs = match init {
-        InitDecl(decl) => emit_declaration(decl, counter)
+        InitDecl(decl) => emit_variable_declaration(decl, counter)
         InitExpr(expr_opt) =>
           match expr_opt {
             Some(expr) => emit_expression(expr, counter).0

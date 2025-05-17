@@ -27,21 +27,57 @@ impl Precedence for TokenType with precedence(self) {
 ///|
 pub fn parse(tokens : @queue.T[Token]) -> Program {
   let token_stream : TokenStream = tokens
-  let func = token_stream.parse_func_def()
+  let function_decls = []
+  while not(token_stream.peek().token_type is EOF) {
+    let function_decl = token_stream.parse_function_decl()
+    function_decls.push(function_decl)
+  }
   token_stream.expect(EOF)
-  { function_def: func }
+  { function_decls, }
 }
 
 ///|
-fn parse_func_def(self : TokenStream) -> FunctionDef {
+fn parse_function_decl(self : TokenStream) -> FunctionDecl {
   self.expect(KWInt)
   let name = self.parse_identifier()
+  let params = self.parse_params()
+  let body = match self.peek().token_type {
+    Semicolon => {
+      let _ = self.take()
+      None
+    }
+    _ => Some(self.parse_block())
+  }
+  { name, params, body }
+}
+
+///|
+fn parse_params(self : TokenStream) -> Array[String] {
   self.expect(LParen)
-  self.expect(KWVoid)
-  self.expect(RParen)
-  // self.expect(LBrace)
-  let body = self.parse_block()
-  { name, body }
+  let params = []
+  match self.peek().token_type {
+    KWVoid => {
+      let _ = self.take()
+      self.expect(RParen)
+    }
+    _ => {
+      fn parse_single_param() -> String {
+        self.expect(KWInt)
+        match self.take() {
+          { token_type: Identifier(s), .. } => s
+          tok => @utils.die("\{tok} is not a valid indentifier")
+        }
+      }
+
+      params.push(parse_single_param())
+      while self.peek().token_type is Comma {
+        let _ = self.take()
+        params.push(parse_single_param())
+      }
+      self.expect(RParen)
+    }
+  }
+  params
 }
 
 ///|
@@ -59,13 +95,23 @@ fn parse_block(self : TokenStream) -> Block {
 ///|
 fn parse_block_item(self : TokenStream) -> BlockItem {
   match self.peek().token_type {
-    KWInt => D(self.parse_declaration())
+    KWInt => D(self.parse_decl())
     _ => S(self.parse_statement())
   }
 }
 
 ///|
-fn parse_declaration(self : TokenStream) -> Decl {
+fn parse_decl(self : TokenStream) -> Decl {
+  // int a;
+  // int f();
+  match self.npeek(3) {
+    [KWInt, Identifier(_), LParen] => FuncDecl(self.parse_function_decl())
+    _ => VarDecl(self.parse_variable_decl())
+  }
+}
+
+///|
+fn parse_variable_decl(self : TokenStream) -> VariableDecl {
   let _ = self.take()
   let name = self.parse_identifier()
   let init = match self.peek().token_type {
@@ -218,7 +264,6 @@ fn parse_for_init(self : TokenStream) -> ForInit {
   for_init
 }
 
-
 ///|
 fn parse_factor(self : TokenStream) -> Expr {
   let token = self.peek()
@@ -234,7 +279,11 @@ fn parse_factor(self : TokenStream) -> Expr {
     }
     Identifier(name) => {
       let _ = self.take()
-      Var(name)
+      match self.peek().token_type{
+        LParen => self.parse_function_call(name)
+        _ => Var(name)
+      }
+      // Var(name)
     }
     LParen => {
       let _ = self.take()
@@ -244,6 +293,20 @@ fn parse_factor(self : TokenStream) -> Expr {
     }
     _ => @utils.die("\{token}, Malformed expression")
   }
+}
+fn parse_function_call(self:TokenStream,name:String)->Expr{
+  let _ =self.take()  // LParen
+  let arguments= []
+  // f(a,b,c)
+  if not(self.peek().token_type is RParen){
+    arguments.push(self.parse_expression(0))
+  }
+  while not(self.peek().token_type is RParen){
+    self.expect(Comma)
+    arguments.push(self.parse_expression(0))
+  }
+  let _ = self.take()
+  FunctionCall(name,arguments)
 }
 
 ///|
@@ -286,6 +349,26 @@ fn peek(self : TokenStream) -> Token {
     Some(tok) => tok
     None => @utils.die("End of Stream")
   }
+}
+
+///|
+fn npeek(self : TokenStream, n : Int) -> Array[TokenType] {
+  if n <= 0 {
+    @utils.die("Can't peek \{n} token(s)")
+  }
+  let tokens = []
+  let mut cnt = 0
+  for token in self._.iter() {
+    tokens.push(token.token_type)
+    cnt += 1
+    if cnt == n {
+      break
+    }
+  }
+  if cnt < n {
+    @utils.die("Can't peek \{n} token(s), end of stream")
+  }
+  tokens
 }
 
 ///|

@@ -1,22 +1,22 @@
 ///|
 pub struct Program {
-  function_def : FunctionDef
+  function_defs : Array[FunctionDecl]
 } derive(Show)
 
 ///|
-pub struct FunctionDef {
+pub struct FunctionDecl {
   name : String
   body : Array[Instruction]
 }
 
 ///|
-impl Show for FunctionDef with to_string(self) {
+impl Show for FunctionDecl with to_string(self) {
   let body = self.body.map(fn(inst) { "  " +inst.to_string() }).join("\n")
   "\n\{self.name}:\n\{body}"
 }
 
 ///|
-impl Show for FunctionDef with output(self, logger) {
+impl Show for FunctionDecl with output(self, logger) {
   logger.write_string(self.to_string())
 }
 

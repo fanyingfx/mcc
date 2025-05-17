@@ -27,25 +27,25 @@ impl ShowOp for @backend.BinaryOp with str(self) {
   }
 }
 
+let obj_header =
+  #|format ELF64
+  #|section ".text" executable
+  #|
+
 ///|
-let start_main =
-  #|format ELF64 executable
-  #|segment readable executable
-  #|entry _start
+let start_func =
+  #|public _start
   #|_start:
   #|  call main
-  #|  mov  rdi,rax
-  #|  mov  rax,60
+  #|  mov rdi,rax
+  #|  mov rax,60
   #|  syscall
+  #|
 
 ///|
 pub fn emit(program : @backend.Program) -> String {
-  let function_asm = emit_function(program.function_def)
-  let asm = match program.function_def.name {
-    "main" => "\{start_main}\n\{function_asm}"
-    _ => function_asm
-  }
-  asm
+  let function_asm = program.function_defs.map(emit_function).join("\n")
+  obj_header+start_func+function_asm
 }
 
 ///|

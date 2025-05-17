@@ -1,6 +1,6 @@
 ///|
 pub struct Program {
-  function_def : FunctionDef
+  function_defs : Array[FunctionDef]
 } derive(Show)
 
 ///|

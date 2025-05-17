@@ -1,11 +1,15 @@
 ///|
 pub fn gen_program(program : @tacky.Program) -> Program {
-  let function_def = gen_function_def(program.function_def)
-  { function_def, }
+  let function_defs = []
+  for function_def in program.function_defs {
+    let function_def = gen_function_def(function_def)
+    function_defs.push(function_def)
+  }
+  { function_defs, }
 }
 
 ///|
-fn gen_function_def(func_def : @tacky.FunctionDef) -> FunctionDef {
+fn gen_function_def(func_def : @tacky.FunctionDecl) -> FunctionDef {
   let name = func_def.name
   let instructions = func_def.body.map(convert_instruction).flatten()
   { name, instructions }

@@ -13,6 +13,8 @@ def main():
             stage=arg
     preprocessed_src = str(cfile.with_suffix(".i"))
     asm_file= str(cfile.with_suffix(".asm"))
+    obj_file= str(cfile.with_suffix(".o"))
+    exe_name=str(cfile.with_suffix(""))
 
     #run preprocesser
     subprocess.run(["gcc","-E","-P",cfile,"-o",preprocessed_src])
@@ -23,7 +25,7 @@ def main():
 
     if stage == "--compile":
         subprocess.run(["fasm",asm_file],check=True)
-    # subprocess.run(["ld",str(objfile),"-dynamic-linker","/usr/lib/ld-linux-x86-64.so.2" ,"-lc" , "-o",basename],stdout=subprocess.DEVNULL,check=True)
+        subprocess.run(["ld",str(obj_file),"-dynamic-linker","/usr/lib/ld-linux-x86-64.so.2" ,"-lc" , "-o",exe_name],stdout=subprocess.DEVNULL,check=True)
     # if Path(asm_file).exists():
     #     os.remove(asm_file)
     if Path(preprocessed_src).exists():

@@ -5,12 +5,21 @@ priv struct State {
 }
 
 ///|
-fn replace_pseudos(program : Program) -> (Program, Int) {
+typealias FuncFrameMap = Map[String, Int]
+
+///|
+fn replace_pseudos(program : Program) -> (Program, FuncFrameMap) {
   let state = State::{ current_offset: 0, offset_map: @immut/hashmap.new() }
-  let (new_state, function_def) = state.replace_in_function_def(
-    program.function_def,
-  )
-  ({ function_def, }, new_state.current_offset)
+  let func_frame_map = {}
+  let function_defs = []
+  for function_def in program.function_defs {
+    let (new_state, new_function_def) = state.replace_in_function_def(
+      function_def,
+    )
+    function_defs.push(new_function_def)
+    func_frame_map[new_function_def.name] = new_state.current_offset
+  }
+  ({ function_defs, }, func_frame_map)
 }
 
 ///|

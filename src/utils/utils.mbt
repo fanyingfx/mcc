@@ -32,6 +32,11 @@ pub fn Counter::make_label(self:Counter,label : String) -> String {
   self.val += 1
   name
 }
+pub fn Counter::make_name_temporary(self:Counter,name:String)->String{
+  let name = name +"."+ self.val.to_string()
+  self.val += 1
+  name
+}
 
 ///|
 pub fn make_temporary(self:Counter) -> String {

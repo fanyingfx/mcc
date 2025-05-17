@@ -1,6 +1,11 @@
 ///|
-pub fn fixup_program(program : Program, last_stack_slot : Int) -> Program {
-  { function_def: fixup_function_def(program.function_def, last_stack_slot) }
+pub fn fixup_program(program : Program, func_frame_map : FuncFrameMap) -> Program {
+  let function_defs = []
+  for function_def in program.function_defs{
+    let fixed_function_def = fixup_function_def(function_def,func_frame_map.get(function_def.name).unwrap())
+    function_defs.push(fixed_function_def)
+  }
+  { function_defs,}
 }
 
 ///|

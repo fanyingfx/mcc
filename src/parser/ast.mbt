@@ -1,13 +1,8 @@
 ///|
 pub(all) struct Program {
-  function_def : FunctionDef
+  function_decls : Array[FunctionDecl]
 } derive(Show)
 
-///|
-pub(all) struct FunctionDef {
-  name : String
-  body : Block
-} derive(Show)
 
 ///|
 pub(all) enum BlockItem {
@@ -17,9 +12,18 @@ pub(all) enum BlockItem {
 
 ///|
 pub(all) type Block Array[BlockItem] derive(Show)
+pub (all) enum Decl{
+  FuncDecl(FunctionDecl)
+  VarDecl(VariableDecl)
+}derive(Show)
+pub(all) struct FunctionDecl{
+  name:String
+  params:Array[String]
+  body:Block?
+}derive(Show)
 
 ///|
-pub(all) struct Decl {
+pub(all) struct VariableDecl {
   name : String
   init : Expr?
 } derive(Show)
@@ -39,7 +43,7 @@ pub(all) enum Stmt {
 } derive(Show)
 
 pub(all) enum ForInit{
-  InitDecl(Decl)
+  InitDecl(VariableDecl)
   InitExpr(Expr?)
 }derive(Show)
 
@@ -51,6 +55,7 @@ pub(all) enum Expr {
   Binary(BinaryOp, Expr, Expr)
   Assignment(left~ : Expr, right~ : Expr)
   Conditional(cond~ : Expr, then~ : Expr, elze~ : Expr)
+  FunctionCall(String,Array[Expr])
 } derive(Show)
 
 ///|
