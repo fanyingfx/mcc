@@ -61,19 +61,20 @@ fn parse_params(self : TokenStream) -> Array[String] {
       self.expect(RParen)
     }
     _ => {
-      fn parse_single_param() -> String {
+      while true{
         self.expect(KWInt)
-        match self.take() {
+        let param = match self.take() {
           { token_type: Identifier(s), .. } => s
           tok => @utils.die("\{tok} is not a valid indentifier")
         }
+        params.push(param)
+        if not(self.peek().token_type is Comma){
+          break
+        }
+        let _= self.take()
+
       }
 
-      params.push(parse_single_param())
-      while self.peek().token_type is Comma {
-        let _ = self.take()
-        params.push(parse_single_param())
-      }
       self.expect(RParen)
     }
   }

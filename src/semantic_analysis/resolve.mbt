@@ -61,20 +61,21 @@ fn resolve_function_decl(
   let inner_map = self.copy()
   let params = []
   for param in function_decl.params {
-    params.push(self.resolve_param(param, counter))
+    let unique_param_name = self.resolve_var_decl_without_init(param, counter)
+    params.push(unique_param_name)
   }
   let body = function_decl.body.map(inner_map.resolve_block(_, counter))
   { name: function_decl.name, params, body }
 }
 
 ///|
-fn resolve_param(
+fn resolve_var_decl_without_init(
   self : IdentifierMap,
   name : String,
   counter : Counter
 ) -> String {
-  if self._.contains(name) {
-    @utils.die("Duplicate variable declaration")
+  if self._.get(name) is Some(entry) && entry.from_current_block {
+    @utils.die("Duplicate variable declaration for \{name}")
   }
   let new_name = counter.make_name_temporary(name)
   self._[name] = {
@@ -121,15 +122,7 @@ fn resolve_var_declaration(
   decl : VariableDecl,
   counter : Counter
 ) -> VariableDecl {
-  if self._.get(decl.name) is Some(entry) && entry.from_current_block {
-    @utils.die("Duplicate variable declaration!")
-  }
-  let unique_name = counter.make_label(decl.name + ".")
-  self._[decl.name] = {
-    unique_name,
-    has_linkage: false,
-    from_current_block: true,
-  }
+  let unique_name = self.resolve_var_decl_without_init(decl.name, counter)
   let init = match decl.init {
     Some(expr) => Some(self.resolve_expression(expr))
     None => None
