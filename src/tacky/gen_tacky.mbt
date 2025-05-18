@@ -317,10 +317,11 @@ test "tacky" {
   inspect!(
     tacky,
     content=
-      #|{function_def: 
+      #|{function_defs: [
       #|main:
       #|  return Constant(3)
-      #|  return Constant(0)}
+      #|  return Constant(0)]}
+
     ,
   )
 }
@@ -337,11 +338,12 @@ test "tacky" {
   inspect!(
     tacky,
     content=
-      #|{function_def: 
+      #|{function_defs: [
       #|main:
       #|  Var("tmp.0") = ~Constant(2)
       #|  return Var("tmp.0")
-      #|  return Constant(0)}
+      #|  return Constant(0)]}
+
     ,
   )
 }
@@ -358,13 +360,14 @@ test "tacky" {
   inspect!(
     tacky,
     content=
-      #|{function_def: 
+      #|{function_defs: [
       #|main:
       #|  Var("tmp.0") = -Constant(8)
       #|  Var("tmp.1") = ~Var("tmp.0")
       #|  Var("tmp.2") = -Var("tmp.1")
       #|  return Var("tmp.2")
-      #|  return Constant(0)}
+      #|  return Constant(0)]}
+
     ,
   )
 }

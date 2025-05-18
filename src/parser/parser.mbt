@@ -102,8 +102,10 @@ fn parse_block_item(self : TokenStream) -> BlockItem {
 
 ///|
 fn parse_decl(self : TokenStream) -> Decl {
+  // 如果第三个token是右括号的话，则是函数声明
   // int a;
   // int f();
+  //      ^
   match self.npeek(3) {
     [KWInt, Identifier(_), LParen] => FuncDecl(self.parse_function_decl())
     _ => VarDecl(self.parse_variable_decl())
@@ -409,7 +411,8 @@ test {
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: Block([D({name: "a", init: Some(Constant(3))}), D({name: "b", init: Some(Var("a"))}), D({name: "c", init: None}), S(Return(Binary(Add, Var("a"), Var("b"))))])}}
+      #|{function_decls: [{name: "main", params: [], body: Some(Block([D(VarDecl({name: "a", init: Some(Constant(3))})), D(VarDecl({name: "b", init: Some(Var("a"))})), D(VarDecl({name: "c", init: None})), S(Return(Binary(Add, Var("a"), Var("b"))))]))}]}
+
     ,
   )
 }
@@ -426,7 +429,8 @@ test "Assignment" {
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: Block([D({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))}), S(Return(Binary(Add, Var("a"), Var("b"))))])}}
+      #|{function_decls: [{name: "main", params: [], body: Some(Block([D(VarDecl({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))})), S(Return(Binary(Add, Var("a"), Var("b"))))]))}]}
+
     ,
   )
 }
@@ -443,7 +447,8 @@ test "redundate_parens" {
   inspect!(
     ast,
     content=
-      #|{function_def: {name: "main", body: Block([S(Return(Unary(Negate, Constant(10))))])}}
+      #|{function_decls: [{name: "main", params: [], body: Some(Block([S(Return(Unary(Negate, Constant(10))))]))}]}
+
     ,
   )
 }

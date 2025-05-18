@@ -11,7 +11,8 @@ test {
   inspect!(
     asm,
     content=
-      #|{function_def: {name: "main", instructions: [AllocateStack(0), Mov(dst=Reg(AX), src=Imm(3)), Ret, Mov(dst=Reg(AX), src=Imm(0)), Ret]}}
+      #|{function_defs: [{name: "main", instructions: [AllocateStack(0), Mov(dst=Reg(AX), src=Imm(3)), Ret, Mov(dst=Reg(AX), src=Imm(0)), Ret]}]}
+
 
     ,
   )

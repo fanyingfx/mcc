@@ -12,13 +12,13 @@ test {
   inspect!(
     asm_str,
     content=
-      #|format ELF64 executable
-      #|segment readable executable
-      #|entry _start
+      #|format ELF64
+      #|section ".text" executable
+      #|public _start
       #|_start:
       #|  call main
-      #|  mov  rdi,rax
-      #|  mov  rax,60
+      #|  mov rdi,rax
+      #|  mov rax,60
       #|  syscall
       #|main:
       #|  push rbp
@@ -38,6 +38,7 @@ test {
       #|  pop rbp
       #|  ret
       #|
+
 
     ,
   )
