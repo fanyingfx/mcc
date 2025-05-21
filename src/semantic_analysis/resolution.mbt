@@ -23,7 +23,7 @@ priv struct Entry {
 }
 
 ///|
-fn copy(self : IdentifierMap) -> IdentifierMap {
+fn IdentifierMap::copy(self : IdentifierMap) -> IdentifierMap {
   let new_variable_map = {}
   for k, v in self._ {
     new_variable_map[k] = { ..v, from_current_block: false }
@@ -61,7 +61,7 @@ fn resolve_function_decl(
   let inner_map = self.copy()
   let params = []
   for param in function_decl.params {
-    let unique_param_name = self.resolve_var_decl_without_init(param, counter)
+    let unique_param_name = inner_map.resolve_var_decl_without_init(param, counter)
     params.push(unique_param_name)
   }
   let body = function_decl.body.map(inner_map.resolve_block(_, counter))
@@ -77,6 +77,7 @@ fn resolve_var_decl_without_init(
   if self._.get(name) is Some(entry) && entry.from_current_block {
     @utils.die("Duplicate variable declaration for \{name}")
   }
+  
   let new_name = counter.make_name_temporary(name)
   self._[name] = {
     unique_name: new_name,

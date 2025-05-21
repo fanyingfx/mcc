@@ -25,6 +25,7 @@ def compile():
         [
             "moon",
             "run",
+            "--debug",
             "-C",
             "/home/fan/code/moonbit/mcc/",
             "src/main",

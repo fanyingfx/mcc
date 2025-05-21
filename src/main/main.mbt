@@ -20,7 +20,7 @@ fn Setting::get_setting() -> Setting {
   let stage = match stage_str {
     "lex" => Lex
     "parse" => Parse
-    "validate"=>Validate
+    "validate" => Validate
     "tacky" => Tacky
     "codegen" => CodeGen
     "compile" => Compile
@@ -61,15 +61,15 @@ fn main {
     return
   }
   let counter = @utils.Counter::new()
-  let resolved_ast = @semantic_analysis.resolve(ast,counter)
-  let validated_ast = @semantic_analysis.loop_label(resolved_ast,counter)
-   if setting.stage is Validate {
-    // println(validated_ast)
+  let resolved_ast = @semantic_analysis.resolve(ast, counter)
+  // println(resolved_ast)
+  let _ = @semantic_analysis.typecheck(resolved_ast)
+  let validated_ast = @semantic_analysis.loop_label(resolved_ast, counter)
+  if setting.stage is Validate {
     println("End in \{setting.stage}")
     return
   }
-  
-  let tacky = @tacky.emit_tacky(validated_ast,counter)
+  let tacky = @tacky.emit_tacky(validated_ast, counter)
   // println(tacky)
   if setting.stage is Tacky {
     println("End in \{setting.stage}")
