@@ -6,6 +6,7 @@ pub struct Program {
 ///|
 pub struct FunctionDecl {
   name : String
+  params:Array[String]
   body : Array[Instruction]
 }
 
@@ -30,6 +31,7 @@ pub enum Instruction {
   JumpIfZero(Val, String)
   JumpIfNotZero(Val, String)
   Label(String)
+  FuncCall(String,Array[Val],Val)
 }
 
 ///|
@@ -43,6 +45,9 @@ pub impl Show for Instruction with to_string(self) {
     Unary(op, dst~, src~) => "\{dst} = \{op}\{src}"
     Return(v) => "return \{v}"
     Label(label) => "\{label}:"
+    FuncCall(fname,args,v)=>{
+      let args_string = args.map(Val::to_string).join(",")
+      "\{v} = \{fname} (\{args_string})"}
   }
 }
 

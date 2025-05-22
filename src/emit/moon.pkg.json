@@ -1,8 +1,8 @@
 {
   "import": [
-
     "mcc/backend",
-    "mcc/utils"
+    "mcc/utils",
+    "mcc/semantic_analysis"
   ],
   "test-import": [
     "mcc/parser",

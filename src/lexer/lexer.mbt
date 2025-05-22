@@ -73,12 +73,32 @@ fn make_int(self : Lexer) -> TokenType {
     'a'..='z' | 'A'..='Z' => panic()
     _ => false
   })
-  let v_int = try {
-    @strconv.parse_int!(int_str)
-  } catch {
+  let v_int = try @strconv.parse_int!(int_str) catch {
     _ => @utils.die("Parse int Error, \{self.ch}, pos:\{self.pos}")
   }
   Constant(v_int)
+}
+
+///|
+fn make_char(self : Lexer) -> TokenType {
+  self.advance_char()
+  let mut ch = self.ch.unwrap()
+  if ch == '\\'{
+    self.advance_char()
+    let escape_ch = self.ch.unwrap()
+    ch = match escape_ch{
+      'n'=>'\n'
+      't'=>'\t'
+      '\\'=>'\\'
+      _=>@utils.die("'\\\{escape_ch}' not supported yet")
+    }
+
+  }
+  self.advance_char()
+  if not(self.ch is Some('\'')){
+    @utils.die("not a valid char")
+  }
+  Constant(ch.to_int())
 }
 
 ///|
@@ -147,6 +167,7 @@ fn next_token(self : Lexer) -> Token {
   let token_type : TokenType = match self.ch {
     Some(c) =>
       match c {
+        '\'' => self.make_char()
         '0'..='9' => self.make_int()
         'a'..='z' | 'A'..='Z' | '_' => self.make_ident_or_keyword()
         '(' => LParen

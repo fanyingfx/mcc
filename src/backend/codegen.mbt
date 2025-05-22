@@ -1,4 +1,7 @@
 ///|
+let arg_registers : Array[Reg] = [DI, SI, DX, CX, R8, R9]
+
+///|
 pub fn gen_program(program : @tacky.Program) -> Program {
   let function_defs = []
   for function_def in program.function_defs {
@@ -11,7 +14,17 @@ pub fn gen_program(program : @tacky.Program) -> Program {
 ///|
 fn gen_function_def(func_def : @tacky.FunctionDecl) -> FunctionDef {
   let name = func_def.name
-  let instructions = func_def.body.map(convert_instruction).flatten()
+  let instructions = []
+  let (reg_params, stack_params) = split_at(func_def.params, 6)
+  for i, param in reg_params {
+    instructions.push(Mov(dst=Pseudo(param), src=Reg(arg_registers[i])))
+  }
+  for i, param in stack_params {
+    let stk = Stack(16 + 8 * i)
+    instructions.push(Mov(dst=Pseudo(param), src=stk))
+  }
+  let body_instructions = func_def.body.map(convert_instruction).flatten()
+  instructions.append(body_instructions)
   { name, instructions }
 }
 
@@ -80,6 +93,59 @@ fn convert_instruction(instruction : @tacky.Instruction) -> Array[Instruction] {
       [Mov(dst~, src~)]
     }
     Label(l) => [Label(l)]
+    FuncCall(fname, args, dst) => convert_function_call(fname, args, dst)
+  }
+}
+
+///|
+fn convert_function_call(
+  fname : String,
+  args : Array[@tacky.Val],
+  dst : @tacky.Val
+) -> Array[Instruction] {
+  let instructions = []
+  let (register_args, stack_args) = split_at(args, 6)
+  let stack_padding = if stack_args.length() % 2 != 0 { 8 } else { 0 }
+  if stack_padding > 0 {
+    instructions.push(AllocateStack(stack_padding))
+  }
+  // println("call \{fname}: \{register_args} \{stack_args}")
+  for reg_index, tacky_arg in register_args {
+    let r = arg_registers[reg_index]
+    let assembly_arg = convert_val(tacky_arg)
+    instructions.push(Mov(dst=Reg(r), src=assembly_arg))
+  }
+
+  // pass arg on stack, in reversed order
+  for tacky_arg in stack_args.rev_iter() {
+    let assembly_arg = convert_val(tacky_arg)
+    if assembly_arg is (Reg(_) | Imm(_)) {
+      instructions.push(Push(assembly_arg))
+    } else {
+      instructions
+      ..push(Mov(dst=Reg(AX), src=assembly_arg))
+      ..push(Push(Reg(AX)))
+    }
+  }
+  instructions.push(Call(fname))
+
+  // adjust stack pointer
+
+  let bytes_to_remove = 8 * stack_args.length() + stack_padding
+  if bytes_to_remove > 0 {
+    instructions.push(DeallocateStack(bytes_to_remove))
+  }
+  let assembly_dst = convert_val(dst)
+  instructions.push(Mov(src=Reg(AX), dst=assembly_dst))
+  instructions
+}
+
+///|
+fn split_at[T](args : Array[T], index : Int) -> (Array[T], Array[T]) {
+  if args.length() <= index {
+    (args, [])
+  } else {
+    (args[:index].to_array(), args[index:].to_array())
   }
 }
 

@@ -5,20 +5,24 @@ from pathlib import Path
 
 
 def compile():
+    # print("args:",sys.argv[1:],file=sys.stderr)
     cfile = None
     stage = "--compile"
+    compiled_to_exe=True
     for arg in sys.argv[1:]:
-        if arg.endswith("c"):
+        if arg=="-c":
+            compiled_to_exe=False
+        elif arg.endswith("c"):
             cfile = Path(arg)
-        if arg.startswith("--"):
+        elif arg.startswith("--"):
             stage = arg
     preprocessed_src = cfile.with_suffix(".i")
     asm_file = cfile.with_suffix(".asm")
     obj_file = cfile.with_suffix(".o")
-    exe_name = str(cfile.with_suffix(""))
+    exe_name = cfile.with_suffix("")
 
     # run preprocesser
-    subprocess.run(["gcc", "-E", "-P", cfile, "-o", str(preprocessed_src)])
+    subprocess.run(["gcc", "-E", "-P", str(cfile), "-o", str(preprocessed_src)])
 
     # compile to fasm
     subprocess.run(
@@ -38,22 +42,24 @@ def compile():
 
     if stage == "--compile":
         subprocess.run(["fasm", str(asm_file)], check=True)
-        subprocess.run(
-            [
-                "ld",
-                str(obj_file),
-                "-dynamic-linker",
-                "/usr/lib/ld-linux-x86-64.so.2",
-                "-lc",
-                "-o",
-                exe_name,
-            ],
-            stdout=subprocess.DEVNULL,
-            check=True,
-        )
-    preprocessed_src.unlink(True)
-    asm_file.unlink(True)
-    obj_file.unlink(True)
+        if compiled_to_exe: 
+            subprocess.run(
+                [
+                    "ld",
+                    "/usr/lib/crt1.o",
+                    str(obj_file),
+                    "-dynamic-linker",
+                    "/usr/lib/ld-linux-x86-64.so.2",
+                    "-lc",
+                    "-o",
+                    str(exe_name),
+                ],
+                stdout=subprocess.DEVNULL,
+                check=True,
+            )
+    # preprocessed_src.unlink(True)
+    # asm_file.unlink(True)
+    # obj_file.unlink(True)
 
 
 if __name__ == "__main__":

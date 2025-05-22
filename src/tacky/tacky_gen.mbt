@@ -6,7 +6,12 @@ pub fn emit_tacky(program : @parser.Program, counter : Counter) -> Program {
   let function_defs = []
   for function_decl in program.function_decls {
     if function_decl.body is Some(body) {
-      let function_def = emit_function_def(function_decl.name, body, counter)
+      let function_def = emit_function_def(
+        function_decl.name,
+        function_decl.params,
+        body,
+        counter,
+      )
       function_defs.push(function_def)
     }
   }
@@ -16,6 +21,7 @@ pub fn emit_tacky(program : @parser.Program, counter : Counter) -> Program {
 ///|
 fn emit_function_def(
   function_name : String,
+  params : Array[String],
   function_body : @parser.Block,
   counter : Counter
 ) -> FunctionDecl {
@@ -25,7 +31,7 @@ fn emit_function_def(
     body.append(emit_block_item(block_item, counter))
   }
   body.push(Return(Constant(0)))
-  { name, body }
+  { name, params, body }
 }
 
 ///|
@@ -75,7 +81,7 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       }
       let else_label = counter.make_label("else")
       let end_label = counter.make_label("end")
-      let _ = instructions
+      instructions
         ..append(cond_instrs)
         ..push(JumpIfZero(cond_val, else_label))
         ..append(then_instrs)
@@ -94,7 +100,7 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       let brk_label = break_label(label)
       let (cond_instrs, cond_val) = emit_expression(cond, counter)
       let body_instrs = emit_statement(body, counter)
-      let instructions = instructions
+      instructions
         ..push(Label(cont_label))
         ..append(cond_instrs)
         ..push(JumpIfZero(cond_val, brk_label))
@@ -110,7 +116,7 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       let brk_label = break_label(label)
       let body_instrs = emit_statement(body, counter)
       let (cond_instrs, cond_val) = emit_expression(cond, counter)
-      let instructions = instructions
+      instructions
         ..push(Label(start_label))
         ..append(body_instrs)
         ..push(Label(cont_label))
@@ -145,7 +151,7 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
         None => []
       }
       let body_instrs = emit_statement(body, counter)
-      let instructions = instructions
+      instructions
         ..append(init_instrs)
         ..push(Label(start_label))
         ..append(cond_instrs)
@@ -200,16 +206,29 @@ fn emit_expression(
       let dst = Var(dst_name)
       let else_label = counter.make_label("else")
       let end_label = counter.make_label("end")
-      let _ = instructions
-        ..append(cond_instrs)
-        ..push(JumpIfZero(cond_val, else_label))
-        ..append(then_instrs)
-        ..push(Copy(dst~, src=then_val))
-        ..push(Jump(end_label))
-        ..push(Label(else_label))
-        ..append(else_instrs)
-        ..push(Copy(dst~, src=else_val))
-        ..push(Label(end_label))
+      instructions
+      ..append(cond_instrs)
+      ..push(JumpIfZero(cond_val, else_label))
+      ..append(then_instrs)
+      ..push(Copy(dst~, src=then_val))
+      ..push(Jump(end_label))
+      ..push(Label(else_label))
+      ..append(else_instrs)
+      ..push(Copy(dst~, src=else_val))
+      ..push(Label(end_label))
+      (instructions, dst)
+    }
+    FunctionCall(fname, args) => {
+      let instructions = []
+      let arg_vals = []
+      let dst_name = counter.make_temporary()
+      let dst = Var(dst_name)
+      for arg in args {
+        let (arg_instrs, val) = emit_expression(arg, counter)
+        instructions.append(arg_instrs)
+        arg_vals.push(val)
+      }
+      instructions.push(FuncCall(fname, arg_vals, dst))
       (instructions, dst)
     }
     _ => @utils.die("\{expr} Expression can not emit")
@@ -230,16 +249,16 @@ fn emit_binary(
       let end_label = counter.make_label("end")
       let dst_name = counter.make_temporary()
       let dst = Var(dst_name)
-      let _ = instructions
-        ..append(instructions1)
-        ..push(JumpIfZero(v1, false_label))
-        ..append(instructions2)
-        ..push(JumpIfZero(v2, false_label))
-        ..push(Copy(dst~, src=Constant(1)))
-        ..push(Jump(end_label))
-        ..push(Label(false_label))
-        ..push(Copy(dst~, src=Constant(0)))
-        ..push(Label(end_label))
+      instructions
+      ..append(instructions1)
+      ..push(JumpIfZero(v1, false_label))
+      ..append(instructions2)
+      ..push(JumpIfZero(v2, false_label))
+      ..push(Copy(dst~, src=Constant(1)))
+      ..push(Jump(end_label))
+      ..push(Label(false_label))
+      ..push(Copy(dst~, src=Constant(0)))
+      ..push(Label(end_label))
       (instructions, dst)
     }
     Binary(Or, e1, e2) => {
@@ -250,16 +269,16 @@ fn emit_binary(
       let end_label = counter.make_label("end")
       let dst_name = counter.make_temporary()
       let dst = Var(dst_name)
-      let _ = instructions
-        ..append(instructions1)
-        ..push(JumpIfNotZero(v1, true_label))
-        ..append(instructions2)
-        ..push(JumpIfNotZero(v2, true_label))
-        ..push(Copy(dst~, src=Constant(0)))
-        ..push(Jump(end_label))
-        ..push(Label(true_label))
-        ..push(Copy(dst~, src=Constant(1)))
-        ..push(Label(end_label))
+      instructions
+      ..append(instructions1)
+      ..push(JumpIfNotZero(v1, true_label))
+      ..append(instructions2)
+      ..push(JumpIfNotZero(v2, true_label))
+      ..push(Copy(dst~, src=Constant(0)))
+      ..push(Jump(end_label))
+      ..push(Label(true_label))
+      ..push(Copy(dst~, src=Constant(1)))
+      ..push(Label(end_label))
       (instructions, dst)
     }
     Binary(op, e1, e2) => {
@@ -321,7 +340,6 @@ test "tacky" {
       #|main:
       #|  return Constant(3)
       #|  return Constant(0)]}
-
     ,
   )
 }
@@ -343,7 +361,6 @@ test "tacky" {
       #|  Var("tmp.0") = ~Constant(2)
       #|  return Var("tmp.0")
       #|  return Constant(0)]}
-
     ,
   )
 }
@@ -367,7 +384,6 @@ test "tacky" {
       #|  Var("tmp.2") = -Var("tmp.1")
       #|  return Var("tmp.2")
       #|  return Constant(0)]}
-
     ,
   )
 }

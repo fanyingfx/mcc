@@ -2,11 +2,11 @@ format ELF64 executable
 segment readable executable
 entry _start
 _start:
-  call main
+  call display
   mov  rdi,rax
   mov  rax,60
   syscall
-main:
+display:
   push rbp
   mov  rbp, rsp
   sub rsp, 8

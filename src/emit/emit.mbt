@@ -7,6 +7,7 @@ priv trait ShowOp {
 priv trait ShowOperand {
   byte(Self) -> String
   dword(Self) -> String
+  qword(Self) -> String
 }
 
 ///|
@@ -17,7 +18,6 @@ impl ShowOp for @backend.UnaryOp with str(self) {
   }
 }
 
-
 ///|
 impl ShowOp for @backend.BinaryOp with str(self) {
   match self {
@@ -27,34 +27,45 @@ impl ShowOp for @backend.BinaryOp with str(self) {
   }
 }
 
+///|
 let obj_header =
   #|format ELF64
-  #|section ".text" executable
+  #|section ".text" writeable
   #|
 
 ///|
-let start_func =
-  #|public _start
-  #|_start:
-  #|  call main
-  #|  mov rdi,rax
-  #|  mov rax,60
-  #|  syscall
-  #|
-
-///|
-pub fn emit(program : @backend.Program) -> String {
-  let function_asm = program.function_defs.map(emit_function).join("\n")
-  obj_header+start_func+function_asm
+pub fn emit(
+  program : @backend.Program,
+  symbol_table : @semantic_analysis.SymbolTable
+) -> String {
+  let extern_functions = []
+  let export_functions = []
+  println(symbol_table)
+  for fname, entry in symbol_table._ {
+    if @semantic_analysis.is_function(entry.ty) {
+      if entry.has_defined {
+        export_functions.push("public _\{fname} as '\{fname}'")
+      } else {
+        extern_functions.push("extrn '\{fname}' as _\{fname}")
+      }
+    }
+  }
+  // println(extern_functions)
+  let extrn_functions_decl = extern_functions.join("\n") + "\n"
+  let export_functions = export_functions.join("\n") + "\n"
+  let function_asm = program.function_defs.map(emit_function(_)).join("\n")
+  obj_header + extrn_functions_decl + export_functions + function_asm
 }
 
 ///|
-fn emit_function(function_def : @backend.FunctionDef) -> String {
-  let label = function_def.name
+fn emit_function(
+  function_def : @backend.FunctionDef
+) -> String {
+  let func_name = show_function_name(function_def.name)
   let instructions = function_def.instructions.map(fn(instruction) {
     "  " + emit_instruction(instruction)
   })
-  $|\{label}:
+  $|\{func_name}:
   #|  push rbp
   #|  mov  rbp, rsp
   $|\{@string.concat(instructions)}
@@ -79,8 +90,25 @@ fn emit_instruction(instr : @backend.Instruction) -> String {
     SetCC(cond_code, operand) =>
       "set\{convert_cond(cond_code)} \{operand.byte()}"
     Label(label) => ".L\{label}:"
+    DeallocateStack(i) => "add rsp, \{i}"
+    Push(operand) => "push \{operand.qword()}"
+    Call(fname) => "call \{show_function_name(fname)}"
   }
   instrction + "\n"
+}
+
+///|
+fn show_function_name(
+  fname : String
+  // symbol_table : @semantic_analysis.SymbolTable
+) -> String {
+  // if fname == "main" {
+  //   return fname
+  // }
+  // if fasm_keywords.contains(fname) {
+  return "_" + fname
+  // }
+  // fname
 }
 
 ///|
@@ -96,14 +124,37 @@ fn convert_cond(cond_code : @backend.CondCode) -> String {
 }
 
 ///|
+impl ShowOperand for @backend.Operand with qword(self) {
+  match self {
+    Imm(i) => i.to_string()
+    Reg(AX) => "rax"
+    Reg(R10) => "r10"
+    Stack(i) => "qword [rbp + \{i}]"
+    Reg(DX) => "rdx"
+    Reg(R11) => "r11"
+    Reg(DI) => "rdi"
+    Reg(SI) => "rsi"
+    Reg(CX) => "rcx"
+    Reg(R8) => "r8"
+    Reg(R9) => "r9"
+    Pseudo(_) => @utils.die("Pseudo should not in emit pass")
+  }
+}
+
+///|
 impl ShowOperand for @backend.Operand with dword(self) {
   match self {
     Imm(i) => i.to_string()
     Reg(AX) => "eax"
     Reg(R10) => "r10d"
-    Stack(i) => "dword [rbp \{i}]"
+    Stack(i) => "dword [rbp + \{i}]"
     Reg(DX) => "edx"
     Reg(R11) => "r11d"
+    Reg(DI) => "edi"
+    Reg(SI) => "esi"
+    Reg(CX) => "ecx"
+    Reg(R8) => "r8d"
+    Reg(R9) => "r9d"
     Pseudo(_) => @utils.die("Pseudo should not in emit pass")
   }
 }
@@ -115,8 +166,13 @@ impl ShowOperand for @backend.Operand with byte(self) {
     Reg(AX) => "al"
     Reg(DX) => "dl"
     Reg(R10) => "r10b"
-    Stack(i) => "byte [rbp \{i}]"
+    Stack(i) => "byte [rbp + \{i}]"
     Reg(R11) => "r11b"
+    Reg(DI) => "dil"
+    Reg(SI) => "sil"
+    Reg(CX) => "cl"
+    Reg(R8) => "r8b"
+    Reg(R9) => "r9b"
     Pseudo(_) => @utils.die("Pseudo should not in emit pass")
   }
 }

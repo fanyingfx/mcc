@@ -59,10 +59,14 @@ fn replace_in_instruction(
       let (state2, e2) = state1.replace_operand(e2)
       (state2, Binary(op, e1, e2))
     }
-    Ret | Cdq | Jmp(_) | JmpCC(_, _) | Label(_) as instruction =>
-      (self, instruction)
-    AllocateStack(_) =>
-      @utils.die("AllocateStack should not be in replace pseudo")
+    Ret
+    | Cdq
+    | Jmp(_)
+    | JmpCC(_, _)
+    | Label(_)
+    | Call(_)
+    | DeallocateStack(_)
+    | AllocateStack(_) as instruction => (self, instruction)
     Idiv(operand) => {
       let (state1, operand) = self.replace_operand(operand)
       (state1, Idiv(operand))
@@ -76,6 +80,12 @@ fn replace_in_instruction(
       let (state1, operand) = self.replace_operand(operand)
       (state1, SetCC(cc, operand))
     }
+    Push(operand) => {
+      let (state1, operand) = self.replace_operand(operand)
+      (state1, Push(operand))
+    }
+    // AllocateStack(_)   as instr =>
+    //   @utils.die("\{instr} should not be in replace pseudo")
   }
 }
 

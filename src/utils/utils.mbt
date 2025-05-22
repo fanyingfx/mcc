@@ -44,3 +44,14 @@ pub fn make_temporary(self:Counter) -> String {
   self.val += 1
   temp
 }
+pub fn round_away_from_zero(n:Int,base~:Int)->Int{
+  if base < 0{
+    die("base should greater than 0")
+  }
+  if n >0 {
+    n + (base - n % base)
+  }else{
+    // n - (base - (-n ) % base)
+    n - base + (-n) % base
+  }
+}
