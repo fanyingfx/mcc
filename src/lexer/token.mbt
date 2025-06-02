@@ -15,6 +15,7 @@ pub(all) enum TokenType {
   KWContinue
   KWStatic
   KWExtern
+  KWWhen
   // punctuation 
   LParen
   RParen
@@ -22,6 +23,7 @@ pub(all) enum TokenType {
   RBrace
   Hyphen
   DoubleHyphen
+  RightArrow
   Tilde
   Semicolon
   Plus

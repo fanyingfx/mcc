@@ -1,12 +1,18 @@
 ///|
 pub struct Program {
-  function_defs : Array[FunctionDef]
+  top_levels : Array[TopLevel]
 } derive(Show)
+pub(all) enum TopLevel{
+  Function(FunctionDef)
+  StaticVariable(name~:String,global~:Bool,init~:Int)
 
+}derive(Show)
 ///|
 pub struct FunctionDef {
   name : String
+  global:Bool
   instructions : Array[Instruction]
+  
 } 
 impl Show for FunctionDef with to_string(self) {
   let body = self.instructions.map(fn(inst) { "  " +inst.to_string() }).join("\n")
@@ -52,6 +58,7 @@ pub enum Operand {
   Reg(Reg)
   Pseudo(String)
   Stack(Int)
+  Data(String)
 } derive(Show)
 
 ///|

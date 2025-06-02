@@ -2,6 +2,8 @@
   "import": [
     "mcc/utils",
     "mcc/parser",
-    "mcc/lexer"
+    "mcc/lexer",
+    "mcc/symbols",
+    "mcc/semantic_analysis"
   ]
 }

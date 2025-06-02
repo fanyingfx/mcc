@@ -1,6 +1,8 @@
 {
   "import": [
     "mcc/utils",
-    "mcc/parser"
+    "mcc/parser",
+    "mcc/types",
+    "mcc/symbols"
   ]
 }

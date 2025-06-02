@@ -3,12 +3,16 @@ pub fn loop_label(
   program : @parser.Program,
   counter : @utils.Counter
 ) -> @parser.Program {
-  let function_decls = []
-  for function_decl in program.function_decls {
-    let function_decl = label_function_def(function_decl, None, counter)
-    function_decls.push(function_decl)
+  let decls = []
+  for decl in program.decls {
+    let labeled_decl : Decl = match decl {
+      FuncDecl(func_decl) =>
+        FuncDecl(label_function_def(func_decl, None, counter))
+      VarDecl(var_decl) => VarDecl(var_decl)
+    }
+    decls.push(labeled_decl)
   }
-  { function_decls, }
+  { decls, }
 }
 
 ///|
@@ -21,6 +25,7 @@ fn label_function_def(
     name: function_decl.name,
     params: function_decl.params,
     body: function_decl.body.map(label_block(_, label, counter)),
+    storage_class:function_decl.storage_class
   }
 }
 

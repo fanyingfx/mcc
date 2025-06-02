@@ -48,6 +48,7 @@ enum Stage {
 ///|
 fn main {
   let setting = Setting::get_setting()
+  // let setting = Setting::{filename:"examples2/declaration_only.i",basename:"examples2/declaration_only",stage:Compile}
   // println(setting)
   let content = @fs.read_file_to_string?(setting.filename).unwrap()
   let tokens = @lexer.lex(content)
@@ -60,22 +61,22 @@ fn main {
     println("End in \{setting.stage}")
     return
   }
+  // println(ast)
   let counter = @utils.Counter::new()
-  // let resolved_ast = @semantic_analysis.resolve(ast, counter)
-  // let _ = @semantic_analysis.typecheck(resolved_ast)
   let (validated_ast, symbol_table) = @semantic_analysis.validate(ast, counter)
   if setting.stage is Validate {
     println("End in \{setting.stage}")
     return
   }
-  let tacky = @tacky.emit_tacky(validated_ast, counter)
+  // println(validated_ast)
+  let tacky = @tacky.emit_tacky(validated_ast,symbol_table, counter)
   println(tacky)
   if setting.stage is Tacky {
     println("End in \{setting.stage}")
     return
   }
-  let asm = @backend.compile(tacky)
-  println(asm)
+  let asm = @backend.compile(tacky,symbol_table)
+  // println(asm)
   if setting.stage is CodeGen {
     println("End in \{setting.stage}")
     return

@@ -3,12 +3,17 @@ let arg_registers : Array[Reg] = [DI, SI, DX, CX, R8, R9]
 
 ///|
 pub fn gen_program(program : @tacky.Program) -> Program {
-  let function_defs = []
-  for function_def in program.function_defs {
-    let function_def = gen_function_def(function_def)
-    function_defs.push(function_def)
+  let top_levels = []
+  for def in program.toplevels {
+    let def = match def {
+      Function(func_def) => Function(gen_function_def(func_def))
+      StaticVariable(name~, global~, init~) =>
+        StaticVariable(name~, global~, init~)
+    }
+    // let def = gen_function_def(def)
+    top_levels.push(def)
   }
-  { function_defs, }
+  { top_levels, }
 }
 
 ///|
@@ -25,7 +30,7 @@ fn gen_function_def(func_def : @tacky.FunctionDecl) -> FunctionDef {
   }
   let body_instructions = func_def.body.map(convert_instruction).flatten()
   instructions.append(body_instructions)
-  { name, instructions }
+  { name, instructions, global: func_def.global }
 }
 
 ///|
@@ -141,7 +146,7 @@ fn convert_function_call(
 }
 
 ///|
-fn split_at[T](args : Array[T], index : Int) -> (Array[T], Array[T]) {
+fn[T] split_at(args : Array[T], index : Int) -> (Array[T], Array[T]) {
   if args.length() <= index {
     (args, [])
   } else {

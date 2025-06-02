@@ -1,6 +1,7 @@
 {
   "import": [
     "mcc/utils",
-    "mcc/lexer"
+    "mcc/lexer",
+    "mcc/types"
   ]
 }

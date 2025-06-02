@@ -4,5 +4,7 @@ target/
 .DS_Store
 examples/*
 !examples/*.c
+examples2/*
+!examples2/*.c
 fasm/*
 !fasm/*.asm

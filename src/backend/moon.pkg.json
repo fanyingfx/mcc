@@ -1,12 +1,13 @@
 {
   "import": [
-
     "mcc/tacky",
-    "mcc/utils"
+    "mcc/utils",
+    "mcc/symbols"
   ],
   "test-import":[
     "mcc/parser",
     "mcc/lexer",
-    "mcc/backend"
+    "mcc/backend",
+    "mcc/semantic_analysis"
   ]
 }

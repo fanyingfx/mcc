@@ -2,20 +2,49 @@
 typealias @utils.Counter
 
 ///|
-pub fn emit_tacky(program : @parser.Program, counter : Counter) -> Program {
+pub fn emit_tacky(
+  program : @parser.Program,
+  symbol_table : @symbols.SymbolTable,
+  counter : Counter
+) -> Program {
   let function_defs = []
-  for function_decl in program.function_decls {
-    if function_decl.body is Some(body) {
-      let function_def = emit_function_def(
-        function_decl.name,
-        function_decl.params,
-        body,
-        counter,
-      )
-      function_defs.push(function_def)
+  for decl in program.decls {
+    match decl {
+      FuncDecl(func_decl) =>
+        if func_decl.body is Some(body) {
+          let function_def = emit_function_def(
+            func_decl.name,
+            func_decl.params,
+            body,
+            symbol_table,
+            counter,
+          )
+          function_defs.push(Function(function_def))
+        }
+      VarDecl(_) => continue
     }
   }
-  { function_defs, }
+  let var_defs = convert_symbols_to_tacky(symbol_table)
+  { toplevels: var_defs + function_defs }
+}
+
+///|
+fn convert_symbols_to_tacky(
+  symbol_table : @symbols.SymbolTable
+) -> Array[TopLevel] {
+  let tacky_defs = []
+  for name, entry in symbol_table._ {
+    match entry.attrs {
+      StaticAttr(init, global) =>
+        match init {
+          Initial(i) => tacky_defs.push(StaticVariable(name~, global~, init=i))
+          Tentative => tacky_defs.push(StaticVariable(name~, global~, init=0))
+          NoInitializer => continue
+        }
+      _ => continue
+    }
+  }
+  tacky_defs
 }
 
 ///|
@@ -23,15 +52,17 @@ fn emit_function_def(
   function_name : String,
   params : Array[String],
   function_body : @parser.Block,
+  symbol_table : @symbols.SymbolTable,
   counter : Counter
 ) -> FunctionDecl {
   let name = function_name
+  let global = symbol_table.is_global(name)
   let body = []
   for block_item in function_body._ {
     body.append(emit_block_item(block_item, counter))
   }
   body.push(Return(Constant(0)))
-  { name, params, body }
+  { name, params, body, global }
 }
 
 ///|
@@ -40,11 +71,13 @@ fn emit_block_item(
   counter : Counter
 ) -> Array[Instruction] {
   match block_item {
+    D(VarDecl({ storage_class: Some(_), .. })) => []
     D(VarDecl(var_decl)) => emit_variable_declaration(var_decl, counter)
     S(stmt) => emit_statement(stmt, counter)
     D(FuncDecl(_)) => []
   }
 }
+
 
 ///|
 fn emit_variable_declaration(
@@ -82,13 +115,13 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       let else_label = counter.make_label("else")
       let end_label = counter.make_label("end")
       instructions
-        ..append(cond_instrs)
-        ..push(JumpIfZero(cond_val, else_label))
-        ..append(then_instrs)
-        ..push(Jump(end_label))
-        ..push(Label(else_label))
-        ..append(else_instrs)
-        ..push(Label(end_label))
+      ..append(cond_instrs)
+      ..push(JumpIfZero(cond_val, else_label))
+      ..append(then_instrs)
+      ..push(Jump(end_label))
+      ..push(Label(else_label))
+      ..append(else_instrs)
+      ..push(Label(end_label))
       instructions
     }
     Compound(Block(block)) => block.map(emit_block_item(_, counter)).flatten()
@@ -101,12 +134,12 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       let (cond_instrs, cond_val) = emit_expression(cond, counter)
       let body_instrs = emit_statement(body, counter)
       instructions
-        ..push(Label(cont_label))
-        ..append(cond_instrs)
-        ..push(JumpIfZero(cond_val, brk_label))
-        ..append(body_instrs)
-        ..push(Jump(cont_label))
-        ..push(Label(brk_label))
+      ..push(Label(cont_label))
+      ..append(cond_instrs)
+      ..push(JumpIfZero(cond_val, brk_label))
+      ..append(body_instrs)
+      ..push(Jump(cont_label))
+      ..push(Label(brk_label))
       instructions
     }
     DoWhile(body, cond, label) => {
@@ -117,12 +150,12 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       let body_instrs = emit_statement(body, counter)
       let (cond_instrs, cond_val) = emit_expression(cond, counter)
       instructions
-        ..push(Label(start_label))
-        ..append(body_instrs)
-        ..push(Label(cont_label))
-        ..append(cond_instrs)
-        ..push(JumpIfNotZero(cond_val, start_label))
-        ..push(Label(brk_label))
+      ..push(Label(start_label))
+      ..append(body_instrs)
+      ..push(Label(cont_label))
+      ..append(cond_instrs)
+      ..push(JumpIfNotZero(cond_val, start_label))
+      ..push(Label(brk_label))
       instructions
     }
     For(init, cond~, post~, body, label) => {
@@ -152,14 +185,14 @@ fn emit_statement(stmt : @parser.Stmt, counter : Counter) -> Array[Instruction] 
       }
       let body_instrs = emit_statement(body, counter)
       instructions
-        ..append(init_instrs)
-        ..push(Label(start_label))
-        ..append(cond_instrs)
-        ..append(body_instrs)
-        ..push(Label(cont_label))
-        ..append(post_instrs)
-        ..push(Jump(start_label))
-        ..push(Label(brk_label))
+      ..append(init_instrs)
+      ..push(Label(start_label))
+      ..append(cond_instrs)
+      ..append(body_instrs)
+      ..push(Label(cont_label))
+      ..append(post_instrs)
+      ..push(Jump(start_label))
+      ..push(Label(brk_label))
       instructions
     }
   }
@@ -332,14 +365,16 @@ test "tacky" {
     #|}
   let tokens = @lexer.lex(content)
   let ast = @parser.parse(tokens)
-  let tacky = emit_tacky(ast, Counter::new())
+  let counter = @utils.Counter::new()
+  let (validated_ast, symbol_table) = @semantic_analysis.validate(ast, counter)
+  let tacky = emit_tacky(validated_ast, symbol_table, counter)
   inspect!(
     tacky,
     content=
-      #|{function_defs: [
+      #|{toplevels: [Function(
       #|main:
       #|  return Constant(3)
-      #|  return Constant(0)]}
+      #|  return Constant(0))]}
     ,
   )
 }
@@ -352,15 +387,17 @@ test "tacky" {
     #|}
   let tokens = @lexer.lex(content)
   let ast = @parser.parse(tokens)
-  let tacky = emit_tacky(ast, Counter::new())
+  let counter = @utils.Counter::new()
+  let (validated_ast, symbol_table) = @semantic_analysis.validate(ast, counter)
+  let tacky = emit_tacky(validated_ast, symbol_table, counter)
   inspect!(
     tacky,
     content=
-      #|{function_defs: [
+      #|{toplevels: [Function(
       #|main:
       #|  Var("tmp.0") = ~Constant(2)
       #|  return Var("tmp.0")
-      #|  return Constant(0)]}
+      #|  return Constant(0))]}
     ,
   )
 }
@@ -373,17 +410,46 @@ test "tacky" {
     #|}
   let tokens = @lexer.lex(content)
   let ast = @parser.parse(tokens)
-  let tacky = emit_tacky(ast, Counter::new())
+  let counter = @utils.Counter::new()
+  let (validated_ast, symbol_table) = @semantic_analysis.validate(ast, counter)
+  let tacky = emit_tacky(validated_ast, symbol_table, counter)
   inspect!(
     tacky,
     content=
-      #|{function_defs: [
+      #|{toplevels: [Function(
       #|main:
       #|  Var("tmp.0") = -Constant(8)
       #|  Var("tmp.1") = ~Var("tmp.0")
       #|  Var("tmp.2") = -Var("tmp.1")
       #|  return Var("tmp.2")
-      #|  return Constant(0)]}
+      #|  return Constant(0))]}
+    ,
+  )
+}
+
+///|
+test "tacky" {
+  let content =
+    #|int x = 1;
+    #|int y;
+    #| int main(void){
+    #| int z =0;
+    #|    return x+z;
+    #|}
+  let tokens = @lexer.lex(content)
+  let ast = @parser.parse(tokens)
+  let counter = @utils.Counter::new()
+  let (validated_ast, symbol_table) = @semantic_analysis.validate(ast, counter)
+  let tacky = emit_tacky(validated_ast, symbol_table, counter)
+  inspect!(
+    tacky,
+    content=
+      #|{toplevels: [StaticVariable(name="x", global=true, init=1), StaticVariable(name="y", global=true, init=0), Function(
+      #|main:
+      #|  Var("z.0") = Constant(0)
+      #|  Var("tmp.1") = Var("x") + Var("z.0")
+      #|  return Var("tmp.1")
+      #|  return Constant(0))]}
     ,
   )
 }

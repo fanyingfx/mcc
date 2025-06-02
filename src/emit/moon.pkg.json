@@ -2,7 +2,7 @@
   "import": [
     "mcc/backend",
     "mcc/utils",
-    "mcc/semantic_analysis"
+    "mcc/symbols"
   ],
   "test-import": [
     "mcc/parser",

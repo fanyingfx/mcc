@@ -1,11 +1,16 @@
 ///|
 pub struct Program {
-  function_defs : Array[FunctionDecl]
+  toplevels : Array[TopLevel]
 } derive(Show)
 
+pub enum TopLevel{
+  Function(FunctionDecl)
+  StaticVariable(name~:String,global~:Bool,init~:Int)
+}derive(Show)
 ///|
 pub struct FunctionDecl {
   name : String
+  global:Bool
   params:Array[String]
   body : Array[Instruction]
 }

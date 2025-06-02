@@ -2,8 +2,12 @@
 typealias @lexer.(TokenType, Token)
 
 ///|
+typealias @types.Type
+
+///|
 priv type TokenStream @queue.T[Token] derive(Show)
 
+///|
 ///|
 priv trait Precedence {
   precedence(Self) -> Int
@@ -29,27 +33,19 @@ pub fn parse(tokens : @queue.T[Token]) -> Program {
   let token_stream : TokenStream = tokens
   let function_decls = []
   while not(token_stream.peek().token_type is EOF) {
-    let function_decl = token_stream.parse_function_decl()
+    let function_decl = token_stream.parse_decl()
     function_decls.push(function_decl)
   }
   token_stream.expect(EOF)
-  { function_decls, }
+  { decls: function_decls }
 }
 
 ///|
-fn parse_function_decl(self : TokenStream) -> FunctionDecl {
-  self.expect(KWInt)
-  let name = self.parse_identifier()
-  let params = self.parse_params()
-  let body = match self.peek().token_type {
-    Semicolon => {
-      let _ = self.take()
-      None
-    }
-    _ => Some(self.parse_block())
-  }
-  { name, params, body }
-}
+// fn parse_function_decl(self : TokenStream) -> FunctionDecl {
+//   self.expect(KWInt)
+
+//   { name, params, body }
+// }
 
 ///|
 fn parse_params(self : TokenStream) -> Array[String] {
@@ -61,20 +57,19 @@ fn parse_params(self : TokenStream) -> Array[String] {
       self.expect(RParen)
     }
     _ => {
-      while true{
+      while true {
         self.expect(KWInt)
         let param = match self.take() {
           { token_type: Identifier(s), .. } => s
           tok => @utils.die("\{tok} is not a valid indentifier")
         }
         params.push(param)
-        if not(self.peek().token_type is Comma){
+        if not(self.peek().token_type is Comma) {
           break
         }
-        let _= self.take()
+        let _ = self.take()
 
       }
-
       self.expect(RParen)
     }
   }
@@ -95,37 +90,89 @@ fn parse_block(self : TokenStream) -> Block {
 
 ///|
 fn parse_block_item(self : TokenStream) -> BlockItem {
-  match self.peek().token_type {
-    KWInt => D(self.parse_decl())
-    _ => S(self.parse_statement())
+  if is_specifier(self.peek()) {
+    D(self.parse_decl())
+  } else {
+    S(self.parse_statement())
   }
+}
+
+///|
+fn is_specifier(token : Token) -> Bool {
+  token.token_type is (KWInt | KWStatic | KWExtern)
 }
 
 ///|
 fn parse_decl(self : TokenStream) -> Decl {
-  // 如果第三个token是右括号的话，则是函数声明
-  // int a;
-  // int f();
-  //      ^
-  match self.npeek(3) {
-    [KWInt, Identifier(_), LParen] => FuncDecl(self.parse_function_decl())
-    _ => VarDecl(self.parse_variable_decl())
+  // let specifier_list = parse_specifier_list(self)
+  let specifier_list = []
+  while is_specifier(self.peek()) {
+    specifier_list.push(self.take())
+  }
+  let (_, storage_class) = parse_type_and_storage_class(specifier_list)
+  let name = self.parse_identifier()
+  match self.peek().token_type {
+    LParen => {
+      let params = self.parse_params()
+      let body = match self.peek().token_type {
+        Semicolon => {
+          let _ = self.take()
+          None
+        }
+        _ => Some(self.parse_block())
+      }
+      FuncDecl({ name, storage_class, params, body })
+    }
+    tok => {
+      let init = match tok {
+        Equal => {
+          let _ = self.take()
+          Some(self.parse_expression(0))
+        }
+        _ => None
+      }
+      self.expect(Semicolon)
+      VarDecl({ name, storage_class, init })
+    }
   }
 }
 
 ///|
-fn parse_variable_decl(self : TokenStream) -> VariableDecl {
-  let _ = self.take()
-  let name = self.parse_identifier()
-  let init = match self.peek().token_type {
-    Equal => {
-      let _ = self.take()
-      Some(self.parse_expression(0))
+fn parse_type_and_storage_class(
+  specifier_list : Array[Token]
+) -> (Type, StorageClass?) {
+  let types = []
+  let storage_classes = []
+  for specifier in specifier_list {
+    if specifier.token_type is KWInt {
+      types.push(specifier)
+    } else {
+      storage_classes.push(specifier)
     }
-    _ => None
   }
-  self.expect(Semicolon)
-  { name, init }
+  // println(types)
+  if types.length() != 1 {
+    @utils.die("Invalid type specifier")
+  }
+  if storage_classes.length() > 1 {
+    @utils.die("Invalid sotrage class")
+  }
+  let typ = Type::TInt
+  let storage_class = if storage_classes.length() == 1 {
+    Some(parse_storage_class(storage_classes[0]))
+  } else {
+    None
+  }
+  (typ, storage_class)
+}
+
+///|
+fn parse_storage_class(storage_class : Token) -> StorageClass {
+  match storage_class.token_type {
+    KWStatic => Static
+    KWExtern => Extern
+    _ => @utils.die("\{storage_class} is not a storage_class")
+  }
 }
 
 ///|
@@ -149,6 +196,37 @@ fn parse_statement(self : TokenStream) -> Stmt {
           Some(self.parse_statement())
         }
         _ => None
+      }
+      If(cond, then, elze)
+    }
+    KWWhen => {
+      let _ = self.take()
+      self.expect(LBrace)
+      // let mut stmt:Stmt=Null
+      let cond = self.parse_expression(0)
+      self.expect(RightArrow)
+      let then = self.parse_statement()
+      println(cond)
+      println(then)
+      // let mut stmt = If(cond,then,None)
+      let elze_list = []
+      while not(self.peek().token_type is RBrace) {
+        if self.peek().token_type is KWElse {
+          let _ = self.take()
+          self.expect(RightArrow)
+          elze_list.push((Constant(1), self.parse_statement()))
+        } else {
+          let cond = self.parse_expression(0)
+          self.expect(RightArrow)
+          let then = self.parse_statement()
+          elze_list.push((cond, then))
+        }
+      }
+      let _ = self.take()
+      let mut elze = None
+      for elze_stmt in elze_list.rev() {
+        let (cond, then) = elze_stmt
+        elze = Some(If(cond, then, elze))
       }
       If(cond, then, elze)
     }
@@ -179,7 +257,7 @@ fn parse_statement(self : TokenStream) -> Stmt {
       let _ = self.take()
       self.expect(LParen)
       let for_init = self.parse_for_init()
-      self.expect(Semicolon)
+      // self.expect(Semicolon)
       let cond = match self.peek().token_type {
         Semicolon => None
         _ => Some(self.parse_expression(0))
@@ -248,23 +326,23 @@ fn parse_expression(self : TokenStream, min_prec : Int) -> Expr {
 
 ///|
 fn parse_for_init(self : TokenStream) -> ForInit {
-  let for_init = match self.peek().token_type {
-    KWInt => {
-      let _ = self.take()
-      let name = self.parse_identifier()
-      let init = match self.peek().token_type {
-        Equal => {
-          let _ = self.take()
-          Some(self.parse_expression(0))
+  if is_specifier(self.peek()) {
+    match self.parse_decl() {
+      VarDecl(vd) => {
+        if vd.storage_class is Some(_){
+          @utils.die("variable declaration in for loop can't have a storage_class")
         }
-        _ => None
-      }
-      InitDecl({ name, init })
+        InitDecl(vd)}
+      _ => @utils.die("Found a function declaration in a for loop header")
     }
-    Semicolon => InitExpr(None)
-    _ => InitExpr(Some(self.parse_expression(0)))
+  } else {
+    let init = match self.peek().token_type {
+      Semicolon => InitExpr(None)
+      _ => InitExpr(Some(self.parse_expression(0)))
+    }
+    self.expect(Semicolon)
+    init
   }
-  for_init
 }
 
 ///|
@@ -282,7 +360,7 @@ fn parse_factor(self : TokenStream) -> Expr {
     }
     Identifier(name) => {
       let _ = self.take()
-      match self.peek().token_type{
+      match self.peek().token_type {
         LParen => self.parse_function_call(name)
         _ => Var(name)
       }
@@ -297,19 +375,21 @@ fn parse_factor(self : TokenStream) -> Expr {
     _ => @utils.die("\{token}, Malformed expression")
   }
 }
-fn parse_function_call(self:TokenStream,name:String)->Expr{
-  let _ =self.take()  // LParen
-  let arguments= []
+
+///|
+fn parse_function_call(self : TokenStream, name : String) -> Expr {
+  let _ = self.take() // LParen
+  let arguments = []
   // f(a,b,c)
-  if not(self.peek().token_type is RParen){
+  if not(self.peek().token_type is RParen) {
     arguments.push(self.parse_expression(0))
   }
-  while not(self.peek().token_type is RParen){
+  while not(self.peek().token_type is RParen) {
     self.expect(Comma)
     arguments.push(self.parse_expression(0))
   }
   let _ = self.take()
-  FunctionCall(name,arguments)
+  FunctionCall(name, arguments)
 }
 
 ///|
@@ -413,7 +493,6 @@ test {
     ast,
     content=
       #|{function_decls: [{name: "main", params: [], body: Some(Block([D(VarDecl({name: "a", init: Some(Constant(3))})), D(VarDecl({name: "b", init: Some(Var("a"))})), D(VarDecl({name: "c", init: None})), S(Return(Binary(Add, Var("a"), Var("b"))))]))}]}
-
     ,
   )
 }
@@ -431,7 +510,6 @@ test "Assignment" {
     ast,
     content=
       #|{function_decls: [{name: "main", params: [], body: Some(Block([D(VarDecl({name: "a", init: Some(Assignment(left=Var("b"), right=Constant(3)))})), S(Return(Binary(Add, Var("a"), Var("b"))))]))}]}
-
     ,
   )
 }
@@ -449,7 +527,6 @@ test "redundate_parens" {
     ast,
     content=
       #|{function_decls: [{name: "main", params: [], body: Some(Block([S(Return(Unary(Negate, Constant(10))))]))}]}
-
     ,
   )
 }
@@ -457,8 +534,8 @@ test "redundate_parens" {
 ///|
 test {
   let content = "1+2*3+4"
-  let tokens = @lexer.lex(content)
-  let ast = parse_expression(tokens, 0)
+  let tokens : TokenStream = @lexer.lex(content)
+  let ast = tokens.parse_expression(0)
   inspect!(
     ast,
     content="Binary(Add, Binary(Add, Constant(1), Binary(Mul, Constant(2), Constant(3))), Constant(4))",
@@ -468,8 +545,8 @@ test {
 ///|
 test "expr 2" {
   let content = " ~2 + 3"
-  let tokens = @lexer.lex(content)
-  let ast = parse_expression(tokens, 0)
+  let tokens : TokenStream = @lexer.lex(content)
+  let ast = tokens.parse_expression(0)
   inspect!(
     ast,
     content="Binary(Add, Unary(Complement, Constant(2)), Constant(3))",
@@ -480,8 +557,8 @@ test "expr 2" {
 test "if-else" {
   let content =
     #|if (a == 3) return a; else b = 8;
-  let tokens = @lexer.lex(content)
-  let ast = parse_statement(tokens)
+  let tokens : TokenStream = @lexer.lex(content)
+  let ast = tokens.parse_statement()
   inspect!(
     ast,
     content=
@@ -494,8 +571,8 @@ test "if-else" {
 test "for" {
   let content =
     #|for (; ;);
-  let tokens = @lexer.lex(content)
-  let ast = parse_statement(tokens)
+  let tokens : TokenStream = @lexer.lex(content)
+  let ast = tokens.parse_statement()
   inspect!(
     ast,
     content=
@@ -507,8 +584,8 @@ test "for" {
 ///|
 test "expr conditional" {
   let content = "a?1:b?2:3"
-  let tokens = @lexer.lex(content)
-  let ast = parse_expression(tokens, 0)
+  let tokens : TokenStream = @lexer.lex(content)
+  let ast = tokens.parse_expression(0)
   inspect!(
     ast,
     content=

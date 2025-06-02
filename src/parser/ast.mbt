@@ -1,8 +1,7 @@
 ///|
 pub(all) struct Program {
-  function_decls : Array[FunctionDecl]
+  decls : Array[Decl]
 } derive(Show)
-
 
 ///|
 pub(all) enum BlockItem {
@@ -12,20 +11,32 @@ pub(all) enum BlockItem {
 
 ///|
 pub(all) type Block Array[BlockItem] derive(Show)
-pub (all) enum Decl{
+
+///|
+pub(all) enum Decl {
   FuncDecl(FunctionDecl)
   VarDecl(VariableDecl)
-}derive(Show)
-pub(all) struct FunctionDecl{
-  name:String
-  params:Array[String]
-  body:Block?
-}derive(Show)
+} derive(Show)
+
+///|
+pub(all) enum StorageClass {
+  Static
+  Extern
+} derive(Show)
+
+///|
+pub(all) struct FunctionDecl {
+  name : String
+  params : Array[String]
+  body : Block?
+  storage_class : StorageClass?
+} derive(Show)
 
 ///|
 pub(all) struct VariableDecl {
   name : String
   init : Expr?
+  storage_class : StorageClass?
 } derive(Show)
 
 ///|
@@ -35,17 +46,18 @@ pub(all) enum Stmt {
   If(Expr, Stmt, Stmt?)
   Break(String)
   Continue(String)
-  While(Expr,Stmt,String)
-  DoWhile(Stmt,Expr,String)
-  For(ForInit,cond~:Expr?,post~:Expr?,Stmt,String)
+  While(Expr, Stmt, String)
+  DoWhile(Stmt, Expr, String)
+  For(ForInit, cond~ : Expr?, post~ : Expr?, Stmt, String)
   Compound(Block)
   Null
 } derive(Show)
 
-pub(all) enum ForInit{
+///|
+pub(all) enum ForInit {
   InitDecl(VariableDecl)
   InitExpr(Expr?)
-}derive(Show)
+} derive(Show)
 
 ///|
 pub(all) enum Expr {
@@ -55,7 +67,7 @@ pub(all) enum Expr {
   Binary(BinaryOp, Expr, Expr)
   Assignment(left~ : Expr, right~ : Expr)
   Conditional(cond~ : Expr, then~ : Expr, elze~ : Expr)
-  FunctionCall(String,Array[Expr])
+  FunctionCall(String, Array[Expr])
 } derive(Show)
 
 ///|

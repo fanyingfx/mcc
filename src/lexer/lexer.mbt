@@ -115,6 +115,7 @@ let keywords : Map[String, TokenType] = {
   "continue": KWContinue,
   "static": KWStatic,
   "extern": KWExtern,
+  "when":KWWhen
 }
 
 ///|
@@ -177,7 +178,7 @@ fn next_token(self : Lexer) -> Token {
         ';' => Semicolon
         '~' => Tilde
         '+' => if self.match_next_char('=') { PlusEqual } else { Plus }
-        '-' => if self.match_next_char('-') { DoubleHyphen } else { Hyphen }
+        '-' => if self.match_next_char('-') { DoubleHyphen } else if self.match_next_char('>') {RightArrow} else{ Hyphen }
         '*' => Star
         '/' =>
           if self.match_next_char('/') {
